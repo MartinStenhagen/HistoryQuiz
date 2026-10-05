@@ -54,7 +54,7 @@ CREATE TABLE answer_options (
     sort_order TINYINT UNSIGNED NOT NULL,
     is_correct BOOLEAN NOT NULL DEFAULT FALSE,
     UNIQUE KEY uq_options_position (question_id, sort_order),
-    -- Explicit unik nyckel for svarsforsokets sammansatta frammande nyckel.
+    -- Explicit unik nyckel för svarsförsökets sammansatta FK.
     UNIQUE KEY uq_options_question_id (question_id, id),
     CONSTRAINT ck_options_position CHECK (sort_order > 0),
     CONSTRAINT ck_options_correct CHECK (is_correct IN (0, 1)),
@@ -108,8 +108,8 @@ CREATE TABLE user_achievements (
         REFERENCES achievements (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- En vy beraknar statistik fran historiken; inga manuella raknare behovs.
--- Anvandare utan svar far 0 i alla raknefalten och NULL i accuracy_percent.
+-- En vy beräknar statistik från historiken; inga manuella räknare behövs.
+-- Användare utan svar får 0 i alla räknefält och NULL i accuracy_percent.
 CREATE VIEW v_user_statistics AS
 SELECT
     u.id AS user_id,
