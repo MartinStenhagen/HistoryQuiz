@@ -1,5 +1,6 @@
 const authService = require('../services/authService');
 
+//ska utarbetas mer för registrerandet av användare
 exports.registerUser = (async (req, res) => {
     try{
         const {email, password} = req.body;

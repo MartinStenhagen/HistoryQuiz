@@ -14,10 +14,11 @@ async function login(email, password){
         return null;
     }
 
-    console.log(user.passwordHash);
     return {id: user.id, email: user.email};
 }
 
+
+//ska utarbetas mer för registrerandet av användare
 async function registerUser(email, password){
     if(usersDb.has(email)){
         throw new Error('user already Exist');
