@@ -1,40 +1,40 @@
 const argon2 = require('argon2');
+const connectionMySQL = require('../database/connection');
 
-const usersDb = new Map();
-
-async function login(email, password){
-    const user = usersDb.get(email);
+async function login(userName, userPass) {
+    const user = await getUser(userName);
     if(!user){
-        return null; 
-        console.log("no user with that email exists");
+        return null;
     }
-
-    const isValid = await argon2.verify(user.passwordHash, password);
-    if(!isValid){
+    
+    const isValid = await argon2.verify(user.password_hash, userPass);
+    if (!isValid){
         return null;
     }
 
-    return {id: user.id, email: user.email};
+    const{password_hash, ...safeUser} = user;
+    return safeUser;
 }
 
+async function getUser(userN) {
+    const sql = 'SELECT * FROM users WHERE username = ?';
+    const [rows] = await connectionMySQL.execute(sql, [userN]);
+    return rows.length > 0 ? rows[0] : null;
+}
 
 //ska utarbetas mer för registrerandet av användare
-async function registerUser(email, password){
-    if(usersDb.has(email)){
-        throw new Error('user already Exist');
-    }
-
-    const passwordHash = await argon2.hash(password, {
+async function registerUser(userN, userPass){
+    const passwordHash = await argon2.hash(userPass, {
         type: argon2.argon2id,
     });
 
-    const newUser = {
-        id: Date.now(), email, passwordHash};
-    
-
-    usersDb.set(email, newUser);
-
-    return {id: newUser.id, email: newUser.email}
+    return new Promise((resolve, reject) => {
+        const sql = 'INSERT INTO users (username, Password_hash) VALUES (?,?)';
+        connectionMySQL.execute(sql, [userN], [passwordHash], (err, result) =>{
+            if (err) return reject(err);
+            resolve({ id: result.insertId, username, email });
+        });
+    });
 }
 
 
