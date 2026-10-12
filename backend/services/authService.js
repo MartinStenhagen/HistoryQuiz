@@ -22,7 +22,6 @@ async function getUser(userN) {
     return rows.length > 0 ? rows[0] : null;
 }
 
-//ska utarbetas mer för registrerandet av användare
 async function registerUser(role, userN, displayN, userPass){
     const passwordHash = await argon2.hash(userPass, {
         type: argon2.argon2id,
