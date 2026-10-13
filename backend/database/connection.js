@@ -5,7 +5,7 @@ const path = require('node:path');
 // Läs backend/.env även om Node startas från en annan arbetsmapp.
 // Miljövariabler som redan är satta har företräde.
 try {
-    loadEnvFile(path.join(__dirname, '..', '.env'));
+    loadEnvFile(path.join(__dirname, '../', '.env'));
 } catch (error) {
     if (error.code !== 'ENOENT') throw error;
 }
