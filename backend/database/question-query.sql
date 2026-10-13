@@ -27,3 +27,8 @@ VALUES
     (1, 'VE-Day', 2, 0),
     (1, 'Dagen D',    3, 1),
     (1, 'Landstigningen',   4, 0);
+
+UPDATE historyQuizDb.questions
+SET status = 'published',
+    published_at = UTC_TIMESTAMP(6)
+WHERE id = 1;

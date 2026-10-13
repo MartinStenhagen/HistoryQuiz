@@ -17,6 +17,9 @@ app.use(express.static('public'));
 //const categoryRoutes = require('./routes/categoryRoutes');
 const authRoutes = require('./routes/authRoutes');
 
+const questionRoutes = require('./routes/questionRoutes');
+app.use('/api/questions', questionRoutes);
+
 //app.use(bookRoutes);
 //app.use(categoryRoutes);
 app.use(authRoutes);
