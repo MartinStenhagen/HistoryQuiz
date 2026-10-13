@@ -57,4 +57,55 @@ async function getQuestions(limit) {
     return Array.from(questionsById.values());
 }
 
-module.exports = { getQuestions };
+async function answerQuestion(questionId, selectedOptionId) {
+    const sql = `
+        SELECT
+            q.explanation,
+            o.id AS optionId,
+            o.is_correct AS isCorrect
+        FROM questions AS q
+        JOIN answer_options AS o
+            ON o.question_id = q.id
+        WHERE q.id = ?
+            AND q.status = ?
+        ORDER BY o.sort_order
+    `;
+
+    const [rows] = await database.execute(
+        sql,
+        [questionId, 'published']
+    );
+
+    // Samma krav som GET: fyra alternativ och exakt ett rätt.
+    const correctOptions = rows.filter(
+        (option) => Number(option.isCorrect) === 1
+    );
+
+    if (rows.length !== 4 || correctOptions.length !== 1) {
+        return null;
+    }
+
+    // Sök bara bland alternativ som tillhör denna fråga.
+    const selectedOption = rows.find(
+        (option) => option.optionId === selectedOptionId
+    );
+
+    if (!selectedOption) {
+        const error = new Error(
+            'Det valda alternativet tillhör inte frågan.'
+        );
+
+        error.code = 'INVALID_OPTION';
+        throw error;
+    }
+
+    const correctOption = correctOptions[0];
+
+    return {
+        isCorrect: selectedOption.optionId === correctOption.optionId,
+        correctOptionId: correctOption.optionId,
+        explanation: rows[0].explanation,
+    };
+}
+
+module.exports = { getQuestions, answerQuestion };
