@@ -3,6 +3,7 @@ defineProps({
   question: { type: Object, required: true },
   questionNumber: { type: Number, required: true },
   totalQuestions: { type: Number, required: true },
+  disabled: { type: Boolean, default: false },
 })
 
 defineEmits(['answer', 'home'])
@@ -30,13 +31,17 @@ defineEmits(['answer', 'home'])
     <div class="answers">
       <button
         v-for="(answer, index) in question.answers"
-        :key="answer"
+        :key="answer.id"
         class="answer-button"
         type="button"
-        @click="$emit('answer', answer)"
+        :disabled="disabled"
+        @click="$emit('answer', answer.id)"
       >
-        <span class="answer-letter" aria-hidden="true">{{ String.fromCharCode(65 + index) }}</span>
-        <span>{{ answer }}</span>
+        <span class="answer-letter" aria-hidden="true">
+        {{ String.fromCharCode(65 + index) }}
+        </span>
+
+        <span>{{ answer.text }}</span>
         <span class="answer-arrow" aria-hidden="true">›</span>
       </button>
     </div>
