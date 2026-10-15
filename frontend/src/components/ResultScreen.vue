@@ -13,7 +13,13 @@ defineEmits(['restart', 'home'])
     <div class="result-medal" aria-hidden="true">🏆</div>
     <p class="eyebrow">Tidsresan är klar!</p>
     <h1 id="result-title" class="result-title">
-      {{ score >= 4 ? 'Vilken stjärna!' : score >= 2 ? 'Bra kämpat!' : 'Snyggt jobbat!' }}
+      {{
+        score === totalQuestions
+          ? 'Vilken stjärna!'
+        : score >= totalQuestions / 2
+        ? 'Bra kämpat!'
+        : 'Snyggt jobbat!'
+      }}
     </h1>
     <p class="result-score">Du fick <strong>{{ score }} av {{ totalQuestions }}</strong> rätt!</p>
     <p class="explanation">
