@@ -13,7 +13,7 @@
     async function handleLogin() {
         errorMessage.value = '';
         try{
-            const response = await fetch('http://localhost:3000/api/auth/login', {
+            const response = await fetch('http://localhost:3000/api/login', {
                 method: 'POST',
                 headers: {'Content-type': 'application/json'},
                 body: JSON.stringify(formData),
@@ -60,7 +60,6 @@
             <label for="password">Password: </label>
             <input type="password" v-model="password" required>
             <button type="submit">Log in</button>
-
             <p v-if="errorMessage" style="color: red;">{{ errorMessage }}</p>
             <p v-if="succesMessage" style="color: green;">{{ succesMessage }}</p>
         </form>
