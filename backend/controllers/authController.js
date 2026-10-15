@@ -3,11 +3,11 @@ const authService = require('../services/authService');
 //ska utarbetas mer för registrerandet av användare
 exports.registerUser = (async (req, res) => {
     try{
-        const {username, password} = req.body;
-        if(!username || !password){
-            return res.status(400).json({error: "username and password require"});
+        const {roleId, username, displayName, password} = req.body;
+        if(!roleId || !username || !displayName || !password){
+            return res.status(400).json({error: "role, username, displayname and password required"});
         }
-        const user = await authService.registerUser(username, password);
+        const user = await authService.registerUser(roleId, username, displayName, password);
         return res.status(201).json({message: "registration succesfull ", user})
      } catch(error){
         return res.status(400).json({error: error.message});
