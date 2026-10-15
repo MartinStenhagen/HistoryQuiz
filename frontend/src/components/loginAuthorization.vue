@@ -7,8 +7,9 @@
 
     const errorMessage = ref('');
     const succesMessage = ref('');
-    const currentUser = ref(null);
-    const userRole = ref(null);
+    const emit = defineEmits(['login-success']);
+    let currentUser = ref(null);
+    let userRole = ref(null);
 
     async function handleLogin() {
         errorMessage.value = '';
@@ -29,11 +30,12 @@
             formData.username = '';
             formData.password = '';
 
-            if (data.role_id === 1){
+            console.log(data);
+            if (data.user.role_id === 1){
                 userRole = 'student';
-            } else if(data.role_id === 2){
+            } else if(data.user.role_id === 2){
                 userRole = 'teacher';
-            } else if(data.role_id === 3){
+            } else if(data.user.role_id === 3){
                 userRole = 'admin';
             } else{
                 throw new Error('not a valid role');
@@ -45,8 +47,8 @@
             }
 
             localStorage.setItem('user', JSON.stringify(currentUser));
-
-        }catch{
+            emit('login-success', currentUser.value);
+        }catch(err){
             errorMessage.value = err.message;
         }
     }
@@ -56,9 +58,9 @@
     <section class="loging-container">
         <form @submit.prevent="handleLogin">
             <label for="username">Username: </label>
-            <input type="text" v-model="username" required>
+            <input type="text" v-model="formData.username" required>
             <label for="password">Password: </label>
-            <input type="password" v-model="password" required>
+            <input type="password" v-model="formData.password" required>
             <button type="submit">Log in</button>
             <p v-if="errorMessage" style="color: red;">{{ errorMessage }}</p>
             <p v-if="succesMessage" style="color: green;">{{ succesMessage }}</p>

@@ -1,10 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
 import { demoQuestions } from './data/demoQuestions'
+import loginAuthorization from './components/loginAuthorization.vue'
 
 const screen = ref('home')
 const questionIndex = ref(0)
@@ -12,6 +13,28 @@ const selectedAnswer = ref('')
 const score = ref(0)
 const currentQuestion = computed(() => demoQuestions[questionIndex.value])
 const isCorrect = computed(() => selectedAnswer.value === currentQuestion.value.correctAnswer)
+
+const isAuthenticated = ref(false);
+const currentUser = ref(null);
+
+onMounted(() => {
+  const savedUser = localStorage.getItem('user');
+  if(savedUser){
+    currentUser.value = JSON.parse(savedUser);
+    isAuthenticated.value = true;
+  }
+});
+
+const handleLoginSuccess = (userData) => {
+  currentUser.value = userData;
+  isAuthenticated.value = true;
+}
+
+const handleLogout = () => {
+  localStorage.removeItem('user');
+  currentUser.value = null;
+  isAuthenticated.value = false;
+}
 
 function goHome() {
   screen.value = 'home'
@@ -54,17 +77,17 @@ function nextStep() {
       </button>
       <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
     </header>
-
     <main>
-      <StartScreen v-if="screen === 'home'" @start="startQuiz" />
-      <QuizQuestion
-        v-else-if="screen === 'quiz'"
-        :question="currentQuestion"
-        :question-number="questionIndex + 1"
-        :total-questions="demoQuestions.length"
-        @answer="chooseAnswer"
-        @home="goHome"
-      />
+        <h2>{{ currentUser.displayname }}</h2>
+        <StartScreen v-if="screen === 'home'" @start="startQuiz" />
+        <QuizQuestion
+          v-else-if="screen === 'quiz'"
+          :question="currentQuestion"
+          :question-number="questionIndex + 1"
+          :total-questions="demoQuestions.length"
+          @answer="chooseAnswer"
+          @home="goHome"
+          />
       <AnswerFeedback
         v-else-if="screen === 'feedback'"
         :question="currentQuestion"
