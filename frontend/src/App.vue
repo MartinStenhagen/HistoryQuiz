@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
+import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
 
@@ -58,6 +59,13 @@ async function loadTopics() {
 
 onMounted(loadTopics)
 
+function showRegistration() {
+  if (loading.value) return
+
+  errorMessage.value = ''
+  screen.value = 'register'
+}
+
 function goHome() {
   // Byt inte spelomgång medan ett anrop pågår.
   if (loading.value) return
@@ -98,7 +106,7 @@ async function startQuiz() {
       errorMessage.value = 'Det finns inga spelbara frågor för det valda ämnet.'
       return
     }
-    
+
     questions.value = data.questions.map((question) => ({
       id: question.id,
       question: question.questionText,
@@ -192,7 +200,7 @@ function nextStep() {
     </header>
 
     <main>
-      <p v-if="loading" role="status">
+      <p v-if="loading && screen !== 'register'" role="status">
         {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
       </p>
 
@@ -200,33 +208,39 @@ function nextStep() {
         {{ errorMessage }}
       </p>
       <template v-if="screen === 'home'">
-      <p v-if="topicsLoading" role="status">
-      Hämtar ämnen…
-      </p>
+        <p v-if="topicsLoading" role="status">
+          Hämtar ämnen…
+        </p>
 
-    <div v-else-if="topicsError" role="alert">
-      <p>{{ topicsError }}</p>
-      <button
-        class="button button-secondary"
-        type="button"
-        @click="loadTopics"
-      >
-        Försök igen
-      </button>
-    </div>
+        <div v-else-if="topicsError" role="alert">
+          <p>{{ topicsError }}</p>
+          <button
+            class="button button-secondary"
+            type="button"
+            @click="loadTopics"
+          >
+            Försök igen
+          </button>
+        </div>
 
-    <p v-else-if="topics.length === 0">
-      Det finns inga ämnen med spelbara frågor ännu.
-    </p>
+        <p v-else-if="topics.length === 0">
+          Det finns inga ämnen med spelbara frågor ännu.
+        </p>
 
-    <StartScreen
-      :topics="topics"
-      :selected-topic-id="selectedTopicId"
-      :disabled="loading || topicsLoading"
-      @topic-change="selectedTopicId = $event"
-      @start="startQuiz"
-    />
-  </template>
+        <StartScreen
+          :topics="topics"
+          :selected-topic-id="selectedTopicId"
+          :disabled="loading || topicsLoading"
+          @topic-change="selectedTopicId = $event"
+          @start="startQuiz"
+          @register="showRegistration"
+        />
+      </template>
+      <RegisterUser
+        v-else-if="screen === 'register'"
+        @busy-change="loading = $event"
+        @home="goHome"
+      />
       <QuizQuestion
         v-else-if="screen === 'quiz'"
         :question="currentQuestion"

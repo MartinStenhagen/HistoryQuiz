@@ -14,7 +14,7 @@ defineProps({
   },
 })
 
-defineEmits(['start', 'topic-change'])
+defineEmits(['start', 'topic-change', 'register'])
 </script>
 
 <template>
@@ -55,6 +55,14 @@ defineEmits(['start', 'topic-change'])
       >
         Börja spela <span aria-hidden="true">→</span>
       </button>
+      <button
+        class="back-button register-link"
+        type="button"
+        :disabled="disabled"
+        @click="$emit('register')"
+      >
+        Skapa konto (valfritt)
+      </button>
       <p class="reassurance"><span aria-hidden="true">☀</span> Ingen tidspress – här lär vi oss tillsammans.</p>
     </div>
     <div class="welcome-art" aria-hidden="true">
@@ -94,5 +102,10 @@ defineEmits(['start', 'topic-change'])
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+.register-link {
+  display: block;
+  margin-top: 20px;
 }
 </style>
