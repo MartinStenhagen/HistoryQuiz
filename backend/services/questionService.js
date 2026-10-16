@@ -36,7 +36,7 @@ async function getQuestions(limit, topicId = null) {
         ORDER BY q.id, o.sort_order
     `;
 
-    const [rows] = await database.execute(sql, ['published'], [topicId, topicId]);
+    const [rows] = await database.execute(sql, ['published', topicId, topicId]);
 
     // SQL ger en rad per alternativ.
     // Alternativen samlas under respektive fråga.
