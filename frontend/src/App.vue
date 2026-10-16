@@ -1,7 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
+import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
 
@@ -13,6 +14,10 @@ const score = ref(0)
 const isCorrect = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
+const topics = ref([])
+const selectedTopicId = ref(null)
+const topicsLoading = ref(false)
+const topicsError = ref('')
 
 const currentQuestion = computed(
   () => questions.value[questionIndex.value]
@@ -30,6 +35,37 @@ async function requestJson(url, options) {
   return data
 }
 
+async function loadTopics() {
+  if (topicsLoading.value) return
+
+  topicsLoading.value = true
+  topicsError.value = ''
+
+  try {
+    const data = await requestJson('/api/topics')
+    topics.value = data.topics
+
+    // Behåll ett tidigare val bara om ämnet fortfarande finns.
+    if (!topics.value.some((topic) => topic.id === selectedTopicId.value)) {
+      selectedTopicId.value = null
+    }
+  } catch (error) {
+    console.error(error)
+    topicsError.value = 'Kunde inte hämta ämnen. Försök igen.'
+  } finally {
+    topicsLoading.value = false
+  }
+}
+
+onMounted(loadTopics)
+
+function showRegistration() {
+  if (loading.value) return
+
+  errorMessage.value = ''
+  screen.value = 'register'
+}
+
 function goHome() {
   // Byt inte spelomgång medan ett anrop pågår.
   if (loading.value) return
@@ -44,20 +80,33 @@ function goHome() {
 }
 
 async function startQuiz() {
-  if (loading.value) return
+  if (loading.value || topicsLoading.value) return
+
+  const selectedTopic = topics.value.find(
+    (topic) => topic.id === selectedTopicId.value
+  )
+
+  if (!selectedTopic) {
+    errorMessage.value = 'Välj ett ämne först.'
+    return
+  }
 
   goHome()
   loading.value = true
 
   try {
-    const data = await requestJson('/api/questions?limit=5')
+    const params = new URLSearchParams({
+      topicId: String(selectedTopic.id),
+      limit: '5',
+    })
+
+    const data = await requestJson(`/api/questions?${params}`)
 
     if (data.questions.length === 0) {
-      errorMessage.value = 'Det finns inga publicerade frågor att spela.'
+      errorMessage.value = 'Det finns inga spelbara frågor för det valda ämnet.'
       return
     }
 
-    // Anpassa API-svaret till komponenternas fältnamn.
     questions.value = data.questions.map((question) => ({
       id: question.id,
       question: question.questionText,
@@ -151,18 +200,47 @@ function nextStep() {
     </header>
 
     <main>
-      <p v-if="loading" role="status">
+      <p v-if="loading && screen !== 'register'" role="status">
         {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
       </p>
 
       <p v-if="errorMessage" role="alert">
         {{ errorMessage }}
       </p>
-      <StartScreen
-        v-if="screen === 'home'"
-        :disabled="loading"
-        @start="startQuiz"
-         />
+      <template v-if="screen === 'home'">
+        <p v-if="topicsLoading" role="status">
+          Hämtar ämnen…
+        </p>
+
+        <div v-else-if="topicsError" role="alert">
+          <p>{{ topicsError }}</p>
+          <button
+            class="button button-secondary"
+            type="button"
+            @click="loadTopics"
+          >
+            Försök igen
+          </button>
+        </div>
+
+        <p v-else-if="topics.length === 0">
+          Det finns inga ämnen med spelbara frågor ännu.
+        </p>
+
+        <StartScreen
+          :topics="topics"
+          :selected-topic-id="selectedTopicId"
+          :disabled="loading || topicsLoading"
+          @topic-change="selectedTopicId = $event"
+          @start="startQuiz"
+          @register="showRegistration"
+        />
+      </template>
+      <RegisterUser
+        v-else-if="screen === 'register'"
+        @busy-change="loading = $event"
+        @home="goHome"
+      />
       <QuizQuestion
         v-else-if="screen === 'quiz'"
         :question="currentQuestion"
