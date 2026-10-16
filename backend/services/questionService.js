@@ -1,9 +1,13 @@
 const database = require('../database/connection');
 
-async function getQuestions(limit) {
+async function getQuestions(limit, topicId = null) {
     // Kontrollen skyddar även om servicen senare anropas från annan kod.
     if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
         throw new Error('Ogiltigt antal frågor.');
+    }
+
+    if (topicId !== null && (!Number.isSafeInteger(topicId) || topicId < 1)) {
+        throw new Error('Ogiltigt ämnes-ID.');
     }
 
     const sql = `
@@ -20,6 +24,7 @@ async function getQuestions(limit) {
             JOIN answer_options
                 ON answer_options.question_id = questions.id
             WHERE questions.status = ?
+                AND (? IS NULL OR questions.topic_id = ?)
             GROUP BY questions.id, questions.question_text
             HAVING COUNT(*) = 4
                 AND SUM(answer_options.is_correct) = 1
@@ -31,7 +36,7 @@ async function getQuestions(limit) {
         ORDER BY q.id, o.sort_order
     `;
 
-    const [rows] = await database.execute(sql, ['published']);
+    const [rows] = await database.execute(sql, ['published'], [topicId, topicId]);
 
     // SQL ger en rad per alternativ.
     // Alternativen samlas under respektive fråga.
@@ -71,10 +76,7 @@ async function answerQuestion(questionId, selectedOptionId) {
         ORDER BY o.sort_order
     `;
 
-    const [rows] = await database.execute(
-        sql,
-        [questionId, 'published']
-    );
+    const [rows] = await database.execute(sql, [questionId, 'published']);
 
     // Samma krav som GET: fyra alternativ och exakt ett rätt.
     const correctOptions = rows.filter(
