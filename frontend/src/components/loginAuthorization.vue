@@ -58,9 +58,9 @@
     <section class="login-container">
         <form @submit.prevent="handleLogin">
             <label class="login_label" for="username">Username: </label>
-            <input class="login_input" type="text" v-model="formData.username" required>
+            <input class="login_input" type="text" v-model="formData.username" required> <br>
             <label class="login_label" for="password">Password: </label>
-            <input class="login_input" type="password" v-model="formData.password" required>
+            <input class="login_input" type="password" v-model="formData.password" required><br>
             <button class="login_btn" type="submit">Log in</button>
             <p v-if="errorMessage" style="color: red;">{{ errorMessage }}</p>
             <p v-if="succesMessage" style="color: green;">{{ succesMessage }}</p>

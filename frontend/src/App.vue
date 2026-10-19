@@ -2,6 +2,7 @@
 import { onMounted, computed, ref } from 'vue'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
+import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
 import { demoQuestions } from './data/demoQuestions'
@@ -15,6 +16,10 @@ const score = ref(0)
 const isCorrect = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
+const topics = ref([])
+const selectedTopicId = ref(null)
+const topicsLoading = ref(false)
+const topicsError = ref('')
 
 const currentQuestion = computed(
   () => questions.value[questionIndex.value]
@@ -34,7 +39,7 @@ async function requestJson(url, options) {
 
 const isAuthenticated = ref(false);
 const currentUser = ref(null);
-const showLoginPopup = ref(false);
+
 
 onMounted(() => {
   const savedUser = localStorage.getItem('user');
@@ -44,18 +49,43 @@ onMounted(() => {
   }
 });
 
-const handleLoginSuccess = (userData) => {
-  currentUser.value = userData;
-  isAuthenticated.value = true;
-  showLoginPopup.value = false;
-  screen.value = 'home';
-}
 
 const handleLogout = () => {
   localStorage.removeItem('user');
   currentUser.value = null;
   isAuthenticated.value = false;
   screen.value = 'home';
+}
+
+async function loadTopics() {
+  if (topicsLoading.value) return
+
+  topicsLoading.value = true
+  topicsError.value = ''
+
+  try {
+    const data = await requestJson('/api/topics')
+    topics.value = data.topics
+
+    // Behåll ett tidigare val bara om ämnet fortfarande finns.
+    if (!topics.value.some((topic) => topic.id === selectedTopicId.value)) {
+      selectedTopicId.value = null
+    }
+  } catch (error) {
+    console.error(error)
+    topicsError.value = 'Kunde inte hämta ämnen. Försök igen.'
+  } finally {
+    topicsLoading.value = false
+  }
+}
+
+onMounted(loadTopics)
+
+function showRegistration() {
+  if (loading.value) return
+
+  errorMessage.value = ''
+  screen.value = 'register'
 }
 
 function goHome() {
@@ -72,20 +102,33 @@ function goHome() {
 }
 
 async function startQuiz() {
-  if (loading.value) return
+  if (loading.value || topicsLoading.value) return
+
+  const selectedTopic = topics.value.find(
+    (topic) => topic.id === selectedTopicId.value
+  )
+
+  if (!selectedTopic) {
+    errorMessage.value = 'Välj ett ämne först.'
+    return
+  }
 
   goHome()
   loading.value = true
 
   try {
-    const data = await requestJson('/api/questions?limit=5')
+    const params = new URLSearchParams({
+      topicId: String(selectedTopic.id),
+      limit: '5',
+    })
+
+    const data = await requestJson(`/api/questions?${params}`)
 
     if (data.questions.length === 0) {
-      errorMessage.value = 'Det finns inga publicerade frågor att spela.'
+      errorMessage.value = 'Det finns inga spelbara frågor för det valda ämnet.'
       return
     }
 
-    // Anpassa API-svaret till komponenternas fältnamn.
     questions.value = data.questions.map((question) => ({
       id: question.id,
       question: question.questionText,
@@ -176,29 +219,54 @@ function nextStep() {
         <span>History <strong>Quiz</strong></span>
       </button>
       <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
-      <section class="login_container">
-        <span v-if="isAuthenticated" style="margin-right: 15px; color: #687188;">Logged in as: {{ currentUser.displayName }}</span>
-        <button class="login_btn" v-if="isAuthenticated" @click="handleLogout">Log out</button>
-        <button v-else class="login_btn" @click="showLoginPopup = !showLoginPopup" >Log in</button>
-        <section v-if="showLoginPopup && !isAuthenticated" class="login-popup">
-          <loginAuthorization @login-success="handleLoginSuccess" />
-        </section>
-      </section>
-      
     </header>
     <main>
-      <p v-if="loading" role="status">
+      <p v-if="loading && screen !== 'register'" role="status">
         {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
       </p>
 
       <p v-if="errorMessage" role="alert">
         {{ errorMessage }}
       </p>
-      <StartScreen
-        v-if="screen === 'home'"
-        :disabled="loading"
-        @start="startQuiz"
-         />
+      <template v-if="screen === 'home'">
+        <p v-if="topicsLoading" role="status">
+          Hämtar ämnen…
+        </p>
+
+        <div v-else-if="topicsError" role="alert">
+          <p>{{ topicsError }}</p>
+          <button
+            class="button button-secondary"
+            type="button"
+            @click="loadTopics"
+          >
+            Försök igen
+          </button>
+        </div>
+
+        <p v-else-if="topics.length === 0">
+          Det finns inga ämnen med spelbara frågor ännu.
+        </p>
+
+        <StartScreen
+          v-if="screen === 'home'" 
+          :topics="topics"
+          :selected-topic-id="selectedTopicId"
+          :is-authenticated="isAuthenticated"
+          :current-user="currentUser"
+          @topic-change="handleTopicChange"
+          @start="handleStartQuiz" 
+          @login-success="handleLoginSuccess"
+          @register="screen = 'register'"
+          @logout="handleLogout"
+        />
+        
+      </template>
+      <RegisterUser
+        v-else-if="screen === 'register'"
+        @busy-change="loading = $event"
+        @home="goHome"
+      />
       <QuizQuestion
         v-else-if="screen === 'quiz'"
         :question="currentQuestion"
