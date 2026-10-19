@@ -76,9 +76,9 @@ function nextStep() {
         <span>History <strong>Quiz</strong></span>
       </button>
       <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
+      <loginAuthorization />
     </header>
     <main>
-        <h2>{{ currentUser.displayname }}</h2>
         <StartScreen v-if="screen === 'home'" @start="startQuiz" />
         <QuizQuestion
           v-else-if="screen === 'quiz'"

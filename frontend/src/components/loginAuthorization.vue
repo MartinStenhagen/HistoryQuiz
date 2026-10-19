@@ -55,13 +55,13 @@
 </script>
 
 <template>
-    <section class="loging-container">
+    <section class="login-container">
         <form @submit.prevent="handleLogin">
-            <label for="username">Username: </label>
-            <input type="text" v-model="formData.username" required>
-            <label for="password">Password: </label>
-            <input type="password" v-model="formData.password" required>
-            <button type="submit">Log in</button>
+            <label class="login_label" for="username">Username: </label>
+            <input class="login_input" type="text" v-model="formData.username" required>
+            <label class="login_label" for="password">Password: </label>
+            <input class="login_input" type="password" v-model="formData.password" required>
+            <button class="login_btn" type="submit">Log in</button>
             <p v-if="errorMessage" style="color: red;">{{ errorMessage }}</p>
             <p v-if="succesMessage" style="color: green;">{{ succesMessage }}</p>
         </form>
