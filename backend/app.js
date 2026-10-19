@@ -20,6 +20,9 @@ const authRoutes = require('./routes/authRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 app.use('/api/questions', questionRoutes);
 
+const topicRoutes = require('./routes/topicRoutes');
+app.use('/api/topics', topicRoutes);
+
 //app.use(bookRoutes);
 //app.use(categoryRoutes);
 app.use(authRoutes);
