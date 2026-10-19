@@ -43,7 +43,7 @@
 
             currentUser.value = {
                 role: userRole,
-                displayName: data.display_name
+                displayName: data.user.display_name
             }
 
             localStorage.setItem('user', JSON.stringify(currentUser));

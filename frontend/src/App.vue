@@ -16,6 +16,7 @@ const isCorrect = computed(() => selectedAnswer.value === currentQuestion.value.
 
 const isAuthenticated = ref(false);
 const currentUser = ref(null);
+const showLoginPopup = ref(false);
 
 onMounted(() => {
   const savedUser = localStorage.getItem('user');
@@ -28,12 +29,15 @@ onMounted(() => {
 const handleLoginSuccess = (userData) => {
   currentUser.value = userData;
   isAuthenticated.value = true;
+  showLoginPopup.value = false;
+  screen.value = 'home';
 }
 
 const handleLogout = () => {
   localStorage.removeItem('user');
   currentUser.value = null;
   isAuthenticated.value = false;
+  screen.value = 'home';
 }
 
 function goHome() {
@@ -76,7 +80,15 @@ function nextStep() {
         <span>History <strong>Quiz</strong></span>
       </button>
       <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
-      <loginAuthorization />
+      <section class="login_container">
+        <span v-if="isAuthenticated" style="margin-right: 15px; color: #687188;">Logged in as: {{ currentUser.displayName }}</span>
+        <button class="login_btn" v-if="isAuthenticated" @click="handleLogout">Log out</button>
+        <button v-else class="login_btn" @click="showLoginPopup = !showLoginPopup" >Log in</button>
+        <section v-if="showLoginPopup && !isAuthenticated" class="login-popup">
+          <loginAuthorization @login-success="handleLoginSuccess" />
+        </section>
+      </section>
+      
     </header>
     <main>
         <StartScreen v-if="screen === 'home'" @start="startQuiz" />
@@ -105,7 +117,6 @@ function nextStep() {
         @home="goHome"
       />
     </main>
-
     <footer class="footer-note">
       <span aria-hidden="true">✦</span> Små frågor, stora upptäckter <span aria-hidden="true">✦</span>
     </footer>
