@@ -22,19 +22,33 @@ async function getUser(userN) {
     return rows.length > 0 ? rows[0] : null;
 }
 
-//ska utarbetas mer för registrerandet av användare
-async function registerUser(userN, userPass){
+async function registerUser(role, userN, displayN, userPass){
     const passwordHash = await argon2.hash(userPass, {
         type: argon2.argon2id,
     });
 
-    return new Promise((resolve, reject) => {
-        const sql = 'INSERT INTO users (username, Password_hash) VALUES (?,?)';
-        connectionMySQL.execute(sql, [userN], [passwordHash], (err, result) =>{
-            if (err) return reject(err);
-            resolve({ id: result.insertId, username, email });
-        });
-    });
+    let userRole = null;
+
+    if (role === 'student'){
+        userRole = 1;
+    } else if(role === 'teacher'){
+        userRole = 2;
+    } else if(role === 'admin'){
+        userRole = 3;
+    } else{
+        throw new Error('not a valid role');
+    }
+
+    const sql = 'INSERT INTO users (role_id, username, display_name, Password_hash) VALUES (?, ?, ?, ?)';
+    
+    const [result] = await connectionMySQL.execute(sql, [userRole, userN, displayN, passwordHash]);
+
+    return { 
+        id: result.insertId, 
+        role_id: userRole, 
+        username: userN, 
+        display_name: displayN 
+    };
 }
 
 
