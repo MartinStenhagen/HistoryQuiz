@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { RouterLink, RouterView } from 'vue-router'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
 import ResultScreen from './components/ResultScreen.vue'
@@ -147,47 +148,54 @@ function nextStep() {
         <span class="brand-mark" aria-hidden="true">H</span>
         <span>History <strong>Quiz</strong></span>
       </button>
-      <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
+      <nav class="top-navigation" aria-label="Huvudmeny">
+        <RouterLink to="/" class="top-link">Quiz</RouterLink>
+        <RouterLink to="/teacher/statistics" class="top-link">Lärarvy</RouterLink>
+        <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
+      </nav>
     </header>
 
     <main>
-      <p v-if="loading" role="status">
-        {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
-      </p>
+      <RouterView v-if="$route.name === 'teacher-statistics'" />
+      <template v-else>
+        <p v-if="loading" role="status">
+          {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
+        </p>
 
-      <p v-if="errorMessage" role="alert">
-        {{ errorMessage }}
-      </p>
-      <StartScreen
-        v-if="screen === 'home'"
-        :disabled="loading"
-        @start="startQuiz"
-         />
-      <QuizQuestion
-        v-else-if="screen === 'quiz'"
-        :question="currentQuestion"
-        :question-number="questionIndex + 1"
-        :total-questions="questions.length"
-        :disabled="loading"
-        @answer="chooseAnswer"
-        @home="goHome"
-      />
-      <AnswerFeedback
-        v-else-if="screen === 'feedback'"
-        :question="currentQuestion"
-        :question-number="questionIndex + 1"
-        :total-questions="questions.length"
-        :is-correct="isCorrect"
-        @next="nextStep"
-        @home="goHome"
-      />
-      <ResultScreen
-        v-else
-        :score="score"
-        :total-questions="questions.length"
-        @restart="startQuiz"
-        @home="goHome"
-      />
+        <p v-if="errorMessage" role="alert">
+          {{ errorMessage }}
+        </p>
+        <StartScreen
+          v-if="screen === 'home'"
+          :disabled="loading"
+          @start="startQuiz"
+        />
+        <QuizQuestion
+          v-else-if="screen === 'quiz'"
+          :question="currentQuestion"
+          :question-number="questionIndex + 1"
+          :total-questions="questions.length"
+          :disabled="loading"
+          @answer="chooseAnswer"
+          @home="goHome"
+        />
+        <AnswerFeedback
+          v-else-if="screen === 'feedback'"
+          :question="currentQuestion"
+          :question-number="questionIndex + 1"
+          :total-questions="questions.length"
+          :is-correct="isCorrect"
+          @next="nextStep"
+          @home="goHome"
+        />
+        <ResultScreen
+          v-else
+          :score="score"
+          :total-questions="questions.length"
+          @restart="startQuiz"
+          @home="goHome"
+        />
+      </template>
     </main>
 
     <footer class="footer-note">
@@ -195,3 +203,32 @@ function nextStep() {
     </footer>
   </div>
 </template>
+
+<style scoped>
+.top-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-link {
+  border-radius: 999px;
+  padding: 9px 13px;
+  color: #526078;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.top-link:hover,
+.top-link.router-link-exact-active {
+  background: #f1e9d9;
+  color: #9b5c3f;
+}
+
+@media (max-width: 700px) {
+  .top-navigation { gap: 2px; }
+  .top-link { padding: 8px; font-size: 12px; }
+  .age-badge { display: none; }
+}
+</style>
