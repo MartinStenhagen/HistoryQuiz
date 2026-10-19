@@ -6,7 +6,6 @@ import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
 import { demoQuestions } from './data/demoQuestions'
-import loginAuthorization from './components/loginAuthorization.vue'
 
 const screen = ref('home')
 const questions = ref([])
@@ -49,13 +48,17 @@ onMounted(() => {
   }
 });
 
+const handleLoginSuccess = (userData) => {
+  currentUser.value = userData;
+  isAuthenticated.value = true;
+  screen.value = 'home';
+};
 
 const handleLogout = () => {
   localStorage.removeItem('user');
   currentUser.value = null;
   isAuthenticated.value = false;
-  screen.value = 'home';
-}
+};
 
 async function loadTopics() {
   if (topicsLoading.value) return
@@ -248,14 +251,14 @@ function nextStep() {
           Det finns inga ämnen med spelbara frågor ännu.
         </p>
 
-        <StartScreen
+        <StartScreen 
           v-if="screen === 'home'" 
           :topics="topics"
           :selected-topic-id="selectedTopicId"
           :is-authenticated="isAuthenticated"
           :current-user="currentUser"
-          @topic-change="handleTopicChange"
-          @start="handleStartQuiz" 
+          @topic-change="selectedTopicId = $event"
+          @start="startQuiz" 
           @login-success="handleLoginSuccess"
           @register="screen = 'register'"
           @logout="handleLogout"

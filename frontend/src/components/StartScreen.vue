@@ -25,22 +25,22 @@ defineProps({
 })
 
 const handleLoginSuccess = (userData) => {
-  currentUser.value = userData;
-  isAuthenticated.value = true;
   showLoginPopup.value = false;
-  screen.value = 'home';
+  emit('login-success', userData);
 }
 
 const showLoginPopup = ref(false);
 
-defineEmits(['start', 'topic-change', 'register', 'logout', 'login-succes'])
+const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-success'])
 </script>
 
 <template>
   <section class="welcome panel" aria-labelledby="welcome-title">
     <div class="welcome-copy">
       <p class="eyebrow"><span aria-hidden="true">✦</span> Dags för en tidsresa!</p>
-      <h1 id="welcome-title">{{ isAuthenticated ? `Välkommen, ${currentUser?.displayName || 'historiedetektiv'}!` : 'Hej, historiedetektiv!' }}</h1>
+      <h1 id="welcome-title">
+        {{ isAuthenticated ? `Välkommen, ${currentUser?.displayName || 'historiedetektiv'}!` : 'Hej, historiedetektiv!' }}
+      </h1>
       <p class="intro">
         Följ med på en rolig resa bakåt i tiden. Svara på historiefrågor och upptäck spännande saker
         från förr. Du kan ta det precis i din egen takt!
@@ -75,20 +75,16 @@ defineEmits(['start', 'topic-change', 'register', 'logout', 'login-succes'])
         Börja spela <span aria-hidden="true">→</span>
       </button>
       <section class="login_container">
-        <section class="login_actions">
         <template v-if="!isAuthenticated">
-          <button
+          <section class="auth-links">
+            <button
               class="back-button register-link"
               type="button"
               :disabled="disabled"
-              @click="showLoginPopup = !showLogin"
+              @click="showLoginPopup = !showLoginPopup"
             >
-              {{ showLogin ? 'Stäng' : 'Logga in' }}
+              {{ showLoginPopup ? 'Stäng' : 'Logga in' }}
             </button>
-            <section v-if="showLoginPopup" class="login-popup">
-              <button class="close_btn" @click="showLoginPopup = false">×</button>
-              <loginAuthorization @login-success="handleLoginSuccess" />
-            </section>
             <button
               class="back-button register-link"
               type="button"
@@ -97,16 +93,22 @@ defineEmits(['start', 'topic-change', 'register', 'logout', 'login-succes'])
             >
               Skapa konto (valfritt)
             </button>
+          </section>
+
+          <section v-if="showLoginPopup" class="login-popup">
+            <button class="close-btn" type="button" @click="showLoginPopup = false">×</button>
+            <loginAuthorization @login-success="handleLoginSuccess" />
+          </section>
         </template>
-        <button
-          v-else
-          class="back-button register-link"
-          type="button"
-          @click="$emit('logout')"
-        >
-          Logga ut
-        </button>
-        
+
+        <section v-else >
+          <button
+            class="back-button register-link"
+            type="button"
+            @click="$emit('logout')"
+          >
+            Logga ut
+          </button>
         </section>
       </section>
       <p class="reassurance"><span aria-hidden="true">☀</span> Ingen tidspress – här lär vi oss tillsammans.</p>

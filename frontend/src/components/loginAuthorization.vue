@@ -23,7 +23,7 @@
             const data = await response.json();
 
             if(!response.ok){
-                throw new Error(data.Error || 'failed to login user');
+                throw new error(data.Error || 'failed to login user');
             }
 
             succesMessage.value = 'Login Succesful'
@@ -32,13 +32,13 @@
 
             console.log(data);
             if (data.user.role_id === 1){
-                userRole = 'student';
+                userRole.value = 'student';
             } else if(data.user.role_id === 2){
-                userRole = 'teacher';
+                userRole.value = 'teacher';
             } else if(data.user.role_id === 3){
-                userRole = 'admin';
+                userRole.value = 'admin';
             } else{
-                throw new Error('not a valid role');
+                throw new error('not a valid role');
             }
 
             currentUser.value = {
@@ -46,7 +46,7 @@
                 displayName: data.user.display_name
             }
 
-            localStorage.setItem('user', JSON.stringify(currentUser));
+            localStorage.setItem('user', JSON.stringify(currentUser.value));
             emit('login-success', currentUser.value);
         }catch(err){
             errorMessage.value = err.message;
