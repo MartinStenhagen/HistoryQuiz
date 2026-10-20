@@ -36,6 +36,30 @@ async function requestJson(url, options) {
   return data
 }
 
+const isAuthenticated = ref(false);
+const currentUser = ref(null);
+
+
+onMounted(() => {
+  const savedUser = localStorage.getItem('user');
+  if(savedUser){
+    currentUser.value = JSON.parse(savedUser);
+    isAuthenticated.value = true;
+  }
+});
+
+const handleLoginSuccess = (userData) => {
+  currentUser.value = userData;
+  isAuthenticated.value = true;
+  screen.value = 'home';
+};
+
+const handleLogout = () => {
+  localStorage.removeItem('user');
+  currentUser.value = null;
+  isAuthenticated.value = false;
+};
+
 async function loadTopics() {
   if (topicsLoading.value) return
 
@@ -203,7 +227,6 @@ function nextStep() {
         <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
       </nav>
     </header>
-
     <main>
       <p
         v-if="$route.name !== 'achievements' && loading && screen !== 'register'"
@@ -239,14 +262,20 @@ function nextStep() {
           Det finns inga ämnen med spelbara frågor ännu.
         </p>
 
-        <StartScreen
+        <StartScreen 
+          v-if="screen === 'home'" 
           :topics="topics"
           :selected-topic-id="selectedTopicId"
-          :disabled="loading || topicsLoading"
+          :is-authenticated="isAuthenticated"
+          :current-user="currentUser"
           @topic-change="selectedTopicId = $event"
-          @start="startQuiz"
+          @start="startQuiz" 
+          @login-success="handleLoginSuccess"
+          :disabled="loading || topicsLoading"
           @register="showRegistration"
+          @logout="handleLogout"
         />
+        
       </template>
       <RegisterUser
         v-else-if="screen === 'register'"
@@ -279,7 +308,6 @@ function nextStep() {
         @home="goHome"
       />
     </main>
-
     <footer class="footer-note">
       <span aria-hidden="true">✦</span> Små frågor, stora upptäckter <span aria-hidden="true">✦</span>
     </footer>
