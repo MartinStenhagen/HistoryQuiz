@@ -205,11 +205,17 @@ function nextStep() {
     </header>
 
     <main>
-      <p v-if="loading && screen !== 'register'" role="status">
+      <p
+        v-if="$route.name !== 'achievements' && loading && screen !== 'register'"
+        role="status"
+      >
         {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
       </p>
 
-      <p v-if="errorMessage" role="alert">
+      <p
+        v-if="$route.name !== 'achievements' && errorMessage"
+        role="alert"
+      >
         {{ errorMessage }}
       </p>
       <RouterView v-if="$route.name === 'achievements'" />
