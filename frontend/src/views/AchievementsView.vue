@@ -1,13 +1,15 @@
 <script setup>
-import { computed } from 'vue'
-import { demoAchievements } from '../data/demoAchievements'
+import { storeToRefs } from 'pinia'
+import { useAchievementsStore } from '../stores/achievements'
 
-const unlockedCount = computed(
-  () => demoAchievements.filter((achievement) => achievement.progress >= achievement.target).length,
-)
+const achievementsStore = useAchievementsStore()
+const { achievements, unlockedCount, } = storeToRefs(achievementsStore)
 
 function progressPercent(achievement) {
-  return Math.min((achievement.progress / achievement.target) * 100, 100)
+  return Math.min(
+    (achievement.progress / achievement.target) * 100,
+    100
+  )
 }
 </script>
 
@@ -21,18 +23,19 @@ function progressPercent(achievement) {
       </div>
       <div class="unlocked-summary" aria-label="Antal upplåsta utmärkelser">
         <span class="summary-icon" aria-hidden="true">🏅</span>
-        <span><strong>{{ unlockedCount }} av {{ demoAchievements.length }}</strong><small>upplåsta</small></span>
+        <span><strong>{{ unlockedCount }} av {{ achievements.length }}</strong><small>upplåsta</small></span>
       </div>
     </div>
 
     <p class="demo-notice" role="note">
       <span aria-hidden="true">ℹ️</span>
-      Exempelvisning – framstegen är inte kopplade till ett konto ännu.
+      Framstegen gäller bara denna flik och nollställs när sidan laddas om.
+      De är inte kopplade till ett konto ännu.
     </p>
 
     <div class="achievement-grid">
       <article
-        v-for="achievement in demoAchievements"
+        v-for="achievement in achievements"
         :key="achievement.code"
         class="achievement-card"
         :class="{ 'is-unlocked': achievement.progress >= achievement.target }"

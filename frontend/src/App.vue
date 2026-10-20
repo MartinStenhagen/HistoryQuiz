@@ -6,7 +6,9 @@ import QuizQuestion from './components/QuizQuestion.vue'
 import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
+import { useAchievementsStore } from './stores/achievements.js'
 
+const achievementsStore = useAchievementsStore() 
 const screen = ref('home')
 const questions = ref([])
 const questionIndex = ref(0)
@@ -188,7 +190,13 @@ async function chooseAnswer(optionId) {
       score.value += 1
     }
 
+    achievementsStore.recordAnswer(
+    question.id,
+    result.isCorrect
+    )
+
     screen.value = 'feedback'
+    
   } catch (error) {
     console.error(error)
     errorMessage.value = 'Kunde inte rätta svaret. Välj ett alternativ igen.'
