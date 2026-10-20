@@ -224,6 +224,7 @@ function nextStep() {
       <nav class="top-navigation" aria-label="Huvudmeny">
         <RouterLink to="/" class="top-link">Quiz</RouterLink>
         <RouterLink to="/achievements" class="top-link">Utmärkelser</RouterLink>
+        <RouterLink to="/teachers" v-if="currentUser && currentUser.role === 'teacher'" class="top-link">Teacher view</RouterLink>
         <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
       </nav>
     </header>
@@ -241,7 +242,7 @@ function nextStep() {
       >
         {{ errorMessage }}
       </p>
-      <RouterView v-if="$route.name === 'achievements'" />
+      <RouterView v-if="$route.matched.length > 0 && $route.name !== 'home'" />
       <template v-else-if="screen === 'home'">
         <p v-if="topicsLoading" role="status">
           Hämtar ämnen…

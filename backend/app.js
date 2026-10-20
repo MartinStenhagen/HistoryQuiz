@@ -16,6 +16,7 @@ app.use(express.static('public'));
 //const bookRoutes = require('./routes/bookRoutes');
 //const categoryRoutes = require('./routes/categoryRoutes');
 const authRoutes = require('./routes/authRoutes');
+const teacherRoutes = require('./routes/teacherRoutes');
 
 const questionRoutes = require('./routes/questionRoutes');
 app.use('/api/questions', questionRoutes);
@@ -26,5 +27,6 @@ app.use('/api/topics', topicRoutes);
 //app.use(bookRoutes);
 //app.use(categoryRoutes);
 app.use(authRoutes);
+app.use(teacherRoutes);
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));
