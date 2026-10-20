@@ -272,7 +272,8 @@ function nextStep() {
           @topic-change="selectedTopicId = $event"
           @start="startQuiz" 
           @login-success="handleLoginSuccess"
-          @register="screen = 'register'"
+          :disabled="loading || topicsLoading"
+          @register="showRegistration"
           @logout="handleLogout"
         />
         

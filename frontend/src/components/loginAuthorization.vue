@@ -14,7 +14,7 @@
     async function handleLogin() {
         errorMessage.value = '';
         try{
-            const response = await fetch('http://localhost:3000/api/login', {
+            const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {'Content-type': 'application/json'},
                 body: JSON.stringify(formData),
@@ -23,7 +23,7 @@
             const data = await response.json();
 
             if(!response.ok){
-                throw new error(data.Error || 'failed to login user');
+                throw new Error(data.Error || 'failed to login user');
             }
 
             succesMessage.value = 'Login Succesful'

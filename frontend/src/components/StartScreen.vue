@@ -85,6 +85,9 @@ const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-
             >
               {{ showLoginPopup ? 'Stäng' : 'Logga in' }}
             </button>
+            <section v-if="showLoginPopup" class="login-popup">
+              <loginAuthorization @login-success="handleLoginSuccess" />
+            </section>
             <button
               class="back-button register-link"
               type="button"
@@ -94,11 +97,7 @@ const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-
               Skapa konto (valfritt)
             </button>
           </section>
-
-          <section v-if="showLoginPopup" class="login-popup">
-            <button class="close-btn" type="button" @click="showLoginPopup = false">×</button>
-            <loginAuthorization @login-success="handleLoginSuccess" />
-          </section>
+          
         </template>
 
         <section v-else >
