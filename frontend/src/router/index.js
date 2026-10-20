@@ -22,6 +22,11 @@ const router = createRouter({
       name: 'teacher-statistics',
       component: () => import('../views/TeacherStatisticsView.vue'),
     },
+    {
+      path: '/achievements',
+      name: 'achievements',
+      component: () => import('../views/AchievementsView.vue'),
+    },
   ],
 })
 

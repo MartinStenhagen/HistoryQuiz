@@ -1,7 +1,6 @@
 const questionService = require('../services/questionService');
 
 exports.getQuestions = async (req, res) => {
-    // Query-parametrar kommer som text. Standardvärdet är fem frågor.
     const rawLimit = req.query.limit ?? '5';
     const limit = Number(rawLimit);
 
@@ -16,13 +15,43 @@ exports.getQuestions = async (req, res) => {
             error: 'limit måste vara ett heltal mellan 1 och 20.',
         });
     }
+
+    // null betyder att inget ämnesfilter ska användas.
+    let topicId = null;
+    const rawTopicId = req.query.topicId;
+
+    if (rawTopicId !== undefined) {
+        if (
+            typeof rawTopicId !== 'string' ||
+            !/^\d+$/.test(rawTopicId)
+        ) {
+            return res.status(400).json({
+                error: 'topicId måste vara ett positivt heltal.',
+            });
+        }
+
+        topicId = Number(rawTopicId);
+
+        if (!Number.isSafeInteger(topicId) || topicId < 1) {
+            return res.status(400).json({
+                error: 'topicId måste vara ett positivt heltal.',
+            });
+        }
+    }
+
     try {
-        const questions = await questionService.getQuestions(limit);
-        
-        return res.status(200).json({questions});
+        const questions = await questionService.getQuestions(
+            limit,
+            topicId
+        );
+
+        return res.status(200).json({ questions });
     } catch (error) {
         console.error('Kunde inte hämta frågor:', error);
-        return res.status(500).json({ error: 'Kunde inte hämta frågor.' });
+
+        return res.status(500).json({
+            error: 'Kunde inte hämta frågor.',
+        });
     }
 };
 
