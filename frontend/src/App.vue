@@ -6,7 +6,6 @@ import QuizQuestion from './components/QuizQuestion.vue'
 import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
-import { demoQuestions } from './data/demoQuestions'
 
 const screen = ref('home')
 const questions = ref([])
