@@ -43,6 +43,7 @@
 
             currentUser.value = {
                 role: userRole,
+                userName: data.user.username,
                 displayName: data.user.display_name
             }
 
