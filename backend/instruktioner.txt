@@ -8,7 +8,7 @@ Skapa tabellerna bok och kategori, skapa ett unikt index för ISBN, samt några 
 --
 
 Node-applikationen:
-Installera först med npm, öppna terminlafönstret i samma mapp som du ska köra filerna.
+Installera först med npm, öppna terminalfönstret i samma mapp som du ska köra filerna.
 
 1. Skapa package.json fil
 npm init
