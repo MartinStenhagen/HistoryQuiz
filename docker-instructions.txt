@@ -1,0 +1,5 @@
+go into the docker-compose and fill out the fields for database, root, user and password. 
+
+run docker and then open a terminal and run docker compose up to run the docker instance. 
+
+create a .env file and place it inside backend folder. what you need in the .env can be found in the env_example file. 

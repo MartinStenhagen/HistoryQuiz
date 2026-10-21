@@ -18,6 +18,11 @@ const router = createRouter({
       component: () => import('../views/AboutView.vue'),
     },
     {
+      path: '/teacher/statistics',
+      name: 'teacher-statistics',
+      component: () => import('../views/TeacherStatisticsView.vue'),
+    },
+    {
       path: '/achievements',
       name: 'achievements',
       component: () => import('../views/AchievementsView.vue'),

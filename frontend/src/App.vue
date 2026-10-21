@@ -6,7 +6,9 @@ import QuizQuestion from './components/QuizQuestion.vue'
 import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
+import { useAchievementsStore } from './stores/achievements.js'
 
+const achievementsStore = useAchievementsStore() 
 const screen = ref('home')
 const questions = ref([])
 const questionIndex = ref(0)
@@ -188,7 +190,13 @@ async function chooseAnswer(optionId) {
       score.value += 1
     }
 
+    achievementsStore.recordAnswer(
+    question.id,
+    result.isCorrect
+    )
+
     screen.value = 'feedback'
+    
   } catch (error) {
     console.error(error)
     errorMessage.value = 'Kunde inte rätta svaret. Välj ett alternativ igen.'
@@ -223,12 +231,15 @@ function nextStep() {
       </button>
       <nav class="top-navigation" aria-label="Huvudmeny">
         <RouterLink to="/" class="top-link">Quiz</RouterLink>
+        <RouterLink to="/teacher/statistics" class="top-link">Lärarvy</RouterLink>
         <RouterLink to="/achievements" class="top-link">Utmärkelser</RouterLink>
         <RouterLink to="/teachers" v-if="currentUser && currentUser.role === 'teacher'" class="top-link">Teacher view</RouterLink>
         <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
       </nav>
     </header>
     <main>
+      <RouterView v-if="['teacher-statistics', 'achievements'].includes($route.name)" />
+      <template v-else>
       <p
         v-if="$route.name !== 'achievements' && loading && screen !== 'register'"
         role="status"
@@ -242,7 +253,6 @@ function nextStep() {
       >
         {{ errorMessage }}
       </p>
-      <RouterView v-if="$route.matched.length > 0 && $route.name !== 'home'" />
       <template v-else-if="screen === 'home'">
         <p v-if="topicsLoading" role="status">
           Hämtar ämnen…
@@ -308,6 +318,7 @@ function nextStep() {
         @restart="startQuiz"
         @home="goHome"
       />
+      </template>
     </main>
     <footer class="footer-note">
       <span aria-hidden="true">✦</span> Små frågor, stora upptäckter <span aria-hidden="true">✦</span>
