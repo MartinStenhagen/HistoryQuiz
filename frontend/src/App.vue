@@ -231,11 +231,14 @@ function nextStep() {
       </button>
       <nav class="top-navigation" aria-label="Huvudmeny">
         <RouterLink to="/" class="top-link">Quiz</RouterLink>
+        <RouterLink to="/teacher/statistics" class="top-link">Lärarvy</RouterLink>
         <RouterLink to="/achievements" class="top-link">Utmärkelser</RouterLink>
         <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
       </nav>
     </header>
     <main>
+      <RouterView v-if="['teacher-statistics', 'achievements'].includes($route.name)" />
+      <template v-else>
       <p
         v-if="$route.name !== 'achievements' && loading && screen !== 'register'"
         role="status"
@@ -249,7 +252,6 @@ function nextStep() {
       >
         {{ errorMessage }}
       </p>
-      <RouterView v-if="$route.name === 'achievements'" />
       <template v-else-if="screen === 'home'">
         <p v-if="topicsLoading" role="status">
           Hämtar ämnen…
@@ -315,6 +317,7 @@ function nextStep() {
         @restart="startQuiz"
         @home="goHome"
       />
+      </template>
     </main>
     <footer class="footer-note">
       <span aria-hidden="true">✦</span> Små frågor, stora upptäckter <span aria-hidden="true">✦</span>
