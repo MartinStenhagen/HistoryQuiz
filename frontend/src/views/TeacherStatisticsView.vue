@@ -21,6 +21,40 @@ function accuracyClass(value) {
   if (value >= 65) return 'accuracy-medium'
   return 'accuracy-low'
 }
+
+const students = ref([]);
+    const selectedStudent = ref(null);
+    const errorMessage = ref('');
+    
+    async function getStudents() {
+        try {
+            const response = await fetch('/api/getstudents');
+            const data = await response.json();
+        
+            if (!response.ok) throw new Error(data.error);
+
+            students.value = data;
+            } catch (err) {
+                errorMessage.value = err.message;
+            }
+    }
+
+    async function selectStudent(userId) {
+        errorMessage.value = '';
+        try {
+            const response = await fetch(`/api/students/${userId}/results`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            selectedStudent.value = data;
+        } catch (err) {
+            console.error("Server returned non-JSON:", text)
+            errorMessage.value = err.message;
+        }
+}
+
+    onMounted(() => {
+        getStudents();
+    });
 </script>
 
 <template>
