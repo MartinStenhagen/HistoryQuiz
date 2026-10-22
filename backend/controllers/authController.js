@@ -36,19 +36,46 @@ exports.registerUser = async (req, res) => {
     }
 };
 
-exports.loginAttempt = (async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      if (!username || !password) {
-        return res.status(400).json({ error: 'username and password required' });
-      }
-      const user = await authService.login(username, password);
-      if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-      return res.status(200).json({ message: 'Login successful', user });
-    } catch (error) { 
-        console.error('Login error:', error); 
-        return res.status(500).json({ error: 'Internal server error' });
-    }
-})
+exports.loginAttempt = async (req, res) => {
+  const { username, password } = req.body ?? {};
+
+  if (
+    typeof username !== 'string' ||
+    !username.trim() ||
+    typeof password !== 'string' ||
+    !password
+  ) {
+    return res.status(400).json({
+      error: 'Användarnamn och lösenord krävs.',
+    });
+  }
+
+  const user = await authService.login(
+    username.trim(),
+    password
+  );
+
+  if (!user) {
+    return res.status(401).json({
+      error: 'Fel användarnamn eller lösenord.',
+    });
+  }
+
+  await new Promise((resolve, reject) => {
+    req.session.regenerate((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+
+  req.session.userId = user.id;
+
+  await new Promise((resolve, reject) => {
+    req.session.save((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+
+  res.json({ user });
+};
