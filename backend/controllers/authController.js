@@ -79,3 +79,24 @@ exports.loginAttempt = async (req, res) => {
 
   res.json({ user });
 };
+
+const {
+  cookieName,
+  cookieOptions,
+} = require('../middleware/session');
+
+exports.me = (req, res) => {
+  res.json({ user: req.user });
+};
+
+exports.logout = async (req, res) => {
+  await new Promise((resolve, reject) => {
+    req.session.destroy((error) => {
+      if (error) reject(error);
+      else resolve();
+    });
+  });
+
+  res.clearCookie(cookieName, cookieOptions);
+  res.status(204).end();
+};
