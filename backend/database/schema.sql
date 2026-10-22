@@ -140,3 +140,16 @@ INSERT INTO achievements (code, name, description, metric, target_value) VALUES
 
 -- Inga anvandare eller lösenord skapas av detta skript.
 -- Node.js måste uppratthalla publiceringsregler, behörigheter och rättning.
+
+CREATE TABLE sessions (
+    session_id VARCHAR(128)
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    expires INT UNSIGNED NOT NULL,
+    data MEDIUMTEXT
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+    PRIMARY KEY (session_id),
+    KEY ix_sessions_expires (expires)
+) ENGINE=InnoDB;
+
+ALTER TABLE answer_attempts
+    ADD COLUMN response_json JSON NULL;
