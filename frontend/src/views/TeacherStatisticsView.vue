@@ -64,8 +64,6 @@ function calculateTotalAnswers(){
       <span class="demo-label"><span aria-hidden="true">●</span> Exempeldata</span>
     </header>
 
-    <button @click="calculateTotalAnswers">btn</button>
-
     <div class="summary-grid" aria-label="Sammanfattning">
       <article class="summary-card students-card">
         <span class="summary-icon" aria-hidden="true">👩‍🎓</span>
