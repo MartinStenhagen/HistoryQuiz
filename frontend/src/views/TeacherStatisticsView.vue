@@ -1,20 +1,6 @@
 <script setup>
-import { computed } from 'vue'
-import { demoStudentStatistics } from '../data/demoStudentStatistics'
+import { ref, onMounted } from 'vue'
 
-const totalAnswers = computed(() =>
-  demoStudentStatistics.reduce((sum, student) => sum + student.answered, 0),
-)
-const totalCorrect = computed(() =>
-  demoStudentStatistics.reduce((sum, student) => sum + student.correct, 0),
-)
-const averageAccuracy = computed(() =>
-  Math.round((totalCorrect.value / totalAnswers.value) * 100),
-)
-
-function accuracy(student) {
-  return Math.round((student.correct / student.answered) * 100)
-}
 
 function accuracyClass(value) {
   if (value >= 80) return 'accuracy-high'
@@ -23,11 +9,12 @@ function accuracyClass(value) {
 }
 
 const students = ref([]);
-    const selectedStudent = ref(null);
-    const errorMessage = ref('');
+const selectedStudent = ref(null);
+const totalAnswers = calculateTotalAnswers(); 
+const errorMessage = ref('');
     
-    async function getStudents() {
-        try {
+async function getStudents() {
+          try {
             const response = await fetch('/api/getstudents');
             const data = await response.json();
         
@@ -38,6 +25,15 @@ const students = ref([]);
                 errorMessage.value = err.message;
             }
     }
+
+function calculateTotalAnswers(){
+  let totAnswers = 0;
+  for (let i = 0; i < students.value.length; i++ ){
+    totAnswers += students.value[i].total_answers;
+  }
+  console.log(totAnswers);
+  return totAnswers;
+}
 
     async function selectStudent(userId) {
         errorMessage.value = '';
@@ -68,10 +64,12 @@ const students = ref([]);
       <span class="demo-label"><span aria-hidden="true">●</span> Exempeldata</span>
     </header>
 
+    <button @click="calculateTotalAnswers">btn</button>
+
     <div class="summary-grid" aria-label="Sammanfattning">
       <article class="summary-card students-card">
         <span class="summary-icon" aria-hidden="true">👩‍🎓</span>
-        <div><p>Elever</p><strong>{{ demoStudentStatistics.length }}</strong></div>
+        <div><p>Elever</p><strong>{{ students.length }}</strong></div>
       </article>
       <article class="summary-card answers-card">
         <span class="summary-icon" aria-hidden="true">📝</span>
@@ -79,7 +77,7 @@ const students = ref([]);
       </article>
       <article class="summary-card accuracy-card">
         <span class="summary-icon" aria-hidden="true">🌟</span>
-        <div><p>Rätt svar totalt</p><strong>{{ totalCorrect }} <small>({{ averageAccuracy }}%)</small></strong></div>
+        <div><p>Rätt svar totalt</p><strong> <small>(%)</small></strong></div>
       </article>
     </div>
 
@@ -89,7 +87,7 @@ const students = ref([]);
           <h2 id="students-title">Resultat per elev</h2>
           <p>Andel rätt visas med både färg och procent.</p>
         </div>
-        <span class="student-count">{{ demoStudentStatistics.length }} elever</span>
+        <span class="student-count">{{ students.length }} elever</span>
       </div>
 
       <div class="table-scroll">
@@ -104,27 +102,27 @@ const students = ref([]);
             </tr>
           </thead>
           <tbody>
-            <tr v-for="student in demoStudentStatistics" :key="student.id">
+            <tr v-for="student in students" :key="student.id">
               <th scope="row" class="student-name">
-                <span class="student-avatar" aria-hidden="true">{{ student.name.charAt(0) }}</span>
-                {{ student.name }}
+                <span class="student-avatar" aria-hidden="true">{{ student.username.charAt(0) }}</span>
+                {{ student.username }}
               </th>
-              <td>{{ student.answered }}</td>
-              <td class="number-correct">{{ student.correct }}</td>
-              <td class="number-wrong">{{ student.wrong }}</td>
+              <td>{{ student.total_answers }}</td>
+              <td class="number-correct">{{ student.total_correct }}</td>
+              <td class="number-wrong">{{ student.total_wrong }}</td>
               <td>
                 <div class="accuracy-cell">
                   <div
                     class="accuracy-track"
                     role="progressbar"
                     :aria-label="`Andel rätt för ${student.name}`"
-                    :aria-valuenow="accuracy(student)"
+                    :aria-valuenow="student.accuracy_percent"
                     aria-valuemin="0"
                     aria-valuemax="100"
                   >
-                    <span :class="accuracyClass(accuracy(student))" :style="{ width: `${accuracy(student)}%` }"></span>
+                    <span :class="accuracyClass(student.accuracy_percent)" :style="{ width: `${student.accuracy_percent}%` }"></span>
                   </div>
-                  <strong>{{ accuracy(student) }}%</strong>
+                  <strong>{{ student.accuracy_percent }}%</strong>
                 </div>
               </td>
             </tr>
