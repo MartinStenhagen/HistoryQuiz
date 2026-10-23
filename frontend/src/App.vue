@@ -231,9 +231,8 @@ function nextStep() {
       </button>
       <nav class="top-navigation" aria-label="Huvudmeny">
         <RouterLink to="/" class="top-link">Quiz</RouterLink>
-        <RouterLink to="/teacher/statistics" class="top-link">Lärarvy</RouterLink>
+        <RouterLink to="/teacher/statistics" class="top-link" v-if="currentUser && currentUser.role === 'teacher'">Lärarvy</RouterLink>
         <RouterLink to="/achievements" class="top-link">Utmärkelser</RouterLink>
-        <RouterLink to="/teachers" v-if="currentUser && currentUser.role === 'teacher'" class="top-link">Teacher view</RouterLink>
         <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
       </nav>
     </header>
