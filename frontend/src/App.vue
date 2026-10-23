@@ -7,6 +7,87 @@ import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
 import { useAchievementsStore } from './stores/achievements.js'
+import { storeToRefs } from 'pinia'
+import { useAuthStore } from './stores/auth'
+
+const auth = useAuthStore()
+
+const {
+  user: currentUser,
+  isAuthenticated,
+} = storeToRefs(auth)
+
+onMounted(() => {
+  auth.restore()
+})
+
+const pendingAnswer = ref(null)
+
+async function submitAnswer(questionId, selectedOptionId) {
+  if (
+    auth.status !== 'authenticated' &&
+    auth.status !== 'anonymous'
+  ) {
+    throw new Error('Inloggningsstatus behöver kontrolleras först.')
+  }
+
+  if (!pendingAnswer.value) {
+    pendingAnswer.value = {
+      questionId,
+      selectedOptionId,
+      requestKey: crypto.randomUUID(),
+      accountId: auth.user?.id ?? null,
+    }
+  }
+
+  const attempt = pendingAnswer.value
+
+  if (
+    attempt.questionId !== questionId ||
+    attempt.selectedOptionId !== selectedOptionId
+  ) {
+    throw new Error(
+      'Det tidigare försöket behöver skickas om med samma svar.',
+    )
+  }
+
+  if (attempt.accountId !== (auth.user?.id ?? null)) {
+    throw new Error(
+      'Logga in på samma konto för att skicka om försöket.',
+    )
+  }
+
+  const startedAtVersion = auth.version
+  const endpoint = attempt.accountId === null ? 'check' : 'answer'
+
+  try {
+    const result = await api(
+      `/api/questions/${attempt.questionId}/${endpoint}`,
+      {
+        method: 'POST',
+        body: {
+          selectedOptionId: attempt.selectedOptionId,
+          requestKey: attempt.requestKey,
+        },
+      },
+    )
+
+    if (auth.version !== startedAtVersion) {
+      throw new Error('Inloggningen ändrades under anropet.')
+    }
+
+    return result
+  } catch (error) {
+    if (
+      error.status === 401 &&
+      auth.version === startedAtVersion
+    ) {
+      auth.expire()
+    }
+
+    throw error
+  }
+}
 
 const achievementsStore = useAchievementsStore() 
 const screen = ref('home')
@@ -37,10 +118,6 @@ async function requestJson(url, options) {
 
   return data
 }
-
-const isAuthenticated = ref(false);
-const currentUser = ref(null);
-
 
 onMounted(() => {
   const savedUser = localStorage.getItem('user');
