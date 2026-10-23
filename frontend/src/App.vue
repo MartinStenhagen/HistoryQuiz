@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
 import RegisterUser from './components/RegisterUser.vue'
@@ -9,25 +9,28 @@ import StartScreen from './components/StartScreen.vue'
 import { useAchievementsStore } from './stores/achievements.js'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from './stores/auth'
+import { api } from './api'
+import LoginAuthorization from './components/loginAuthorization.vue'
 
 const auth = useAuthStore()
+const router = useRouter()
+const authReady = computed(() => ['authenticated', 'anonymous'].includes(auth.status))
 
-const {
-  user: currentUser,
-  isAuthenticated,
-} = storeToRefs(auth)
+const { user: currentUser, isAuthenticated } = storeToRefs(auth)
 
 onMounted(() => {
   auth.restore()
 })
 
 const pendingAnswer = ref(null)
+const needsLogin = computed(
+  () =>
+    pendingAnswer.value?.accountId != null &&
+    (!auth.isAuthenticated || pendingAnswer.value.accountId !== auth.user?.id),
+)
 
 async function submitAnswer(questionId, selectedOptionId) {
-  if (
-    auth.status !== 'authenticated' &&
-    auth.status !== 'anonymous'
-  ) {
+  if (!authReady.value || auth.busy) {
     throw new Error('Inloggningsstatus behöver kontrolleras först.')
   }
 
@@ -42,35 +45,26 @@ async function submitAnswer(questionId, selectedOptionId) {
 
   const attempt = pendingAnswer.value
 
-  if (
-    attempt.questionId !== questionId ||
-    attempt.selectedOptionId !== selectedOptionId
-  ) {
-    throw new Error(
-      'Det tidigare försöket behöver skickas om med samma svar.',
-    )
+  if (attempt.questionId !== questionId || attempt.selectedOptionId !== selectedOptionId) {
+    throw new Error('Det tidigare försöket behöver skickas om med samma svar.')
   }
 
   if (attempt.accountId !== (auth.user?.id ?? null)) {
-    throw new Error(
-      'Logga in på samma konto för att skicka om försöket.',
-    )
+    throw new Error('Logga in på samma konto för att skicka om försöket.')
   }
 
   const startedAtVersion = auth.version
   const endpoint = attempt.accountId === null ? 'check' : 'answer'
 
   try {
-    const result = await api(
-      `/api/questions/${attempt.questionId}/${endpoint}`,
-      {
-        method: 'POST',
-        body: {
-          selectedOptionId: attempt.selectedOptionId,
-          requestKey: attempt.requestKey,
-        },
+    const result = await api(`/api/questions/${attempt.questionId}/${endpoint}`, {
+      method: 'POST',
+      accountId: attempt.accountId,
+      body: {
+        selectedOptionId: attempt.selectedOptionId,
+        requestKey: attempt.requestKey,
       },
-    )
+    })
 
     if (auth.version !== startedAtVersion) {
       throw new Error('Inloggningen ändrades under anropet.')
@@ -79,7 +73,7 @@ async function submitAnswer(questionId, selectedOptionId) {
     return result
   } catch (error) {
     if (
-      error.status === 401 &&
+      (error.status === 401 || error.code === 'ACCOUNT_CHANGED') &&
       auth.version === startedAtVersion
     ) {
       auth.expire()
@@ -89,7 +83,7 @@ async function submitAnswer(questionId, selectedOptionId) {
   }
 }
 
-const achievementsStore = useAchievementsStore() 
+const achievementsStore = useAchievementsStore()
 const screen = ref('home')
 const questions = ref([])
 const questionIndex = ref(0)
@@ -103,41 +97,23 @@ const selectedTopicId = ref(null)
 const topicsLoading = ref(false)
 const topicsError = ref('')
 
-const currentQuestion = computed(
-  () => questions.value[questionIndex.value]
-)
+const currentQuestion = computed(() => questions.value[questionIndex.value])
 
-// Gemensam hjälpfunktion för GET och POST.
-async function requestJson(url, options) {
-  const response = await fetch(url, options)
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Anropet misslyckades.')
+async function handleLogout() {
+  if (loading.value || auth.busy) return
+  errorMessage.value = ''
+  try {
+    await auth.logout()
+    goHome()
+  } catch {
+    errorMessage.value = 'Kunde inte bekräfta utloggningen. Försök igen.'
+    await auth.restore()
   }
-
-  return data
 }
 
-onMounted(() => {
-  const savedUser = localStorage.getItem('user');
-  if(savedUser){
-    currentUser.value = JSON.parse(savedUser);
-    isAuthenticated.value = true;
-  }
-});
-
-const handleLoginSuccess = (userData) => {
-  currentUser.value = userData;
-  isAuthenticated.value = true;
-  screen.value = 'home';
-};
-
-const handleLogout = () => {
-  localStorage.removeItem('user');
-  currentUser.value = null;
-  isAuthenticated.value = false;
-};
+function retryAnswer() {
+  if (pendingAnswer.value) void chooseAnswer(pendingAnswer.value.selectedOptionId)
+}
 
 async function loadTopics() {
   if (topicsLoading.value) return
@@ -146,7 +122,7 @@ async function loadTopics() {
   topicsError.value = ''
 
   try {
-    const data = await requestJson('/api/topics')
+    const data = await api('/api/topics')
     topics.value = data.topics
 
     // Behåll ett tidigare val bara om ämnet fortfarande finns.
@@ -164,7 +140,7 @@ async function loadTopics() {
 onMounted(loadTopics)
 
 function showRegistration() {
-  if (loading.value) return
+  if (loading.value || auth.busy || !authReady.value) return
 
   errorMessage.value = ''
   screen.value = 'register'
@@ -172,23 +148,23 @@ function showRegistration() {
 
 function goHome() {
   // Byt inte spelomgång medan ett anrop pågår.
-  if (loading.value) return
+  if (loading.value || auth.busy) return
 
   screen.value = 'home'
   questions.value = []
   questionIndex.value = 0
   selectedAnswer.value = null
+  pendingAnswer.value = null
   score.value = 0
   isCorrect.value = false
   errorMessage.value = ''
+  void router.push('/')
 }
 
 async function startQuiz() {
-  if (loading.value || topicsLoading.value) return
+  if (loading.value || topicsLoading.value || auth.busy || !authReady.value) return
 
-  const selectedTopic = topics.value.find(
-    (topic) => topic.id === selectedTopicId.value
-  )
+  const selectedTopic = topics.value.find((topic) => topic.id === selectedTopicId.value)
 
   if (!selectedTopic) {
     errorMessage.value = 'Välj ett ämne först.'
@@ -204,7 +180,7 @@ async function startQuiz() {
       limit: '5',
     })
 
-    const data = await requestJson(`/api/questions?${params}`)
+    const data = await api(`/api/questions?${params}`)
 
     if (data.questions.length === 0) {
       errorMessage.value = 'Det finns inga spelbara frågor för det valda ämnet.'
@@ -227,11 +203,7 @@ async function startQuiz() {
 }
 
 async function chooseAnswer(optionId) {
-  if (
-    loading.value ||
-    selectedAnswer.value !== null ||
-    screen.value !== 'quiz'
-  ) {
+  if (loading.value || selectedAnswer.value !== null || screen.value !== 'quiz') {
     return
   }
 
@@ -240,23 +212,11 @@ async function chooseAnswer(optionId) {
   errorMessage.value = ''
 
   try {
-    const result = await requestJson(
-      `/api/questions/${question.id}/answer`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          selectedOptionId: optionId,
-        }),
-      }
-    )
+    const result = await submitAnswer(question.id, optionId)
 
     // Hitta svarstexten som hör till rätt alternativ.
-    question.correctAnswer = question.answers.find(
-      (option) => option.id === result.correctOptionId
-    )?.text ?? ''
+    question.correctAnswer =
+      question.answers.find((option) => option.id === result.correctOptionId)?.text ?? ''
 
     question.explanation = result.explanation
 
@@ -267,16 +227,14 @@ async function chooseAnswer(optionId) {
       score.value += 1
     }
 
-    achievementsStore.recordAnswer(
-    question.id,
-    result.isCorrect
-    )
-
     screen.value = 'feedback'
-    
+    if (result.saved) void achievementsStore.load()
   } catch (error) {
     console.error(error)
-    errorMessage.value = 'Kunde inte rätta svaret. Välj ett alternativ igen.'
+    errorMessage.value =
+      error.status === 401
+        ? 'Sessionen har gått ut. Logga in igen för att spara samma svar.'
+        : error.message || 'Kunde inte rätta svaret. Skicka om samma försök.'
   } finally {
     loading.value = false
   }
@@ -286,6 +244,7 @@ function nextStep() {
   if (loading.value || screen.value !== 'feedback') return
 
   selectedAnswer.value = null
+  pendingAnswer.value = null
   isCorrect.value = false
   errorMessage.value = ''
 
@@ -302,7 +261,13 @@ function nextStep() {
 <template>
   <div class="app-shell">
     <header class="topbar">
-      <button class="brand" type="button" aria-label="Till startsidan" :disabled="loading" @click="goHome">
+      <button
+        class="brand"
+        type="button"
+        aria-label="Till startsidan"
+        :disabled="loading"
+        @click="goHome"
+      >
         <span class="brand-mark" aria-hidden="true">H</span>
         <span>History <strong>Quiz</strong></span>
       </button>
@@ -316,88 +281,97 @@ function nextStep() {
     <main>
       <RouterView v-if="['teacher-statistics', 'achievements'].includes($route.name)" />
       <template v-else>
-      <p
-        v-if="$route.name !== 'achievements' && loading && screen !== 'register'"
-        role="status"
-      >
-        {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
-      </p>
-
-      <p
-        v-if="$route.name !== 'achievements' && errorMessage"
-        role="alert"
-      >
-        {{ errorMessage }}
-      </p>
-      <template v-else-if="screen === 'home'">
-        <p v-if="topicsLoading" role="status">
-          Hämtar ämnen…
-        </p>
-
-        <div v-else-if="topicsError" role="alert">
-          <p>{{ topicsError }}</p>
-          <button
-            class="button button-secondary"
-            type="button"
-            @click="loadTopics"
-          >
-            Försök igen
+        <p v-if="auth.status === 'checking'" role="status">Kontrollerar inloggningen…</p>
+        <div v-else-if="auth.status === 'error'" role="alert">
+          <p>{{ auth.error }}</p>
+          <button class="button button-secondary" :disabled="auth.busy" @click="auth.restore">
+            Kontrollera igen
           </button>
         </div>
-
-        <p v-else-if="topics.length === 0">
-          Det finns inga ämnen med spelbara frågor ännu.
+        <p v-if="$route.name !== 'achievements' && loading && screen !== 'register'" role="status">
+          {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
         </p>
 
-        <StartScreen 
-          v-if="screen === 'home'" 
-          :topics="topics"
-          :selected-topic-id="selectedTopicId"
-          :is-authenticated="isAuthenticated"
-          :current-user="currentUser"
-          @topic-change="selectedTopicId = $event"
-          @start="startQuiz" 
-          @login-success="handleLoginSuccess"
-          :disabled="loading || topicsLoading"
-          @register="showRegistration"
-          @logout="handleLogout"
+        <p v-if="$route.name !== 'achievements' && errorMessage" role="alert">
+          {{ errorMessage }}
+        </p>
+        <template v-if="screen === 'home'">
+          <p v-if="topicsLoading" role="status">Hämtar ämnen…</p>
+
+          <div v-else-if="topicsError" role="alert">
+            <p>{{ topicsError }}</p>
+            <button class="button button-secondary" type="button" @click="loadTopics">
+              Försök igen
+            </button>
+          </div>
+
+          <p v-else-if="topics.length === 0">Det finns inga ämnen med spelbara frågor ännu.</p>
+
+          <StartScreen
+            v-if="screen === 'home'"
+            :topics="topics"
+            :selected-topic-id="selectedTopicId"
+            :is-authenticated="isAuthenticated"
+            :current-user="currentUser"
+            @topic-change="selectedTopicId = $event"
+            @start="startQuiz"
+            @login-success="goHome"
+            :account-busy="auth.busy"
+            :disabled="loading || topicsLoading || !authReady || auth.busy"
+            @register="showRegistration"
+            @logout="handleLogout"
+          />
+        </template>
+        <RegisterUser
+          v-else-if="screen === 'register'"
+          @busy-change="loading = $event"
+          @home="goHome"
         />
-        
-      </template>
-      <RegisterUser
-        v-else-if="screen === 'register'"
-        @busy-change="loading = $event"
-        @home="goHome"
-      />
-      <QuizQuestion
-        v-else-if="screen === 'quiz'"
-        :question="currentQuestion"
-        :question-number="questionIndex + 1"
-        :total-questions="questions.length"
-        :disabled="loading"
-        @answer="chooseAnswer"
-        @home="goHome"
-      />
-      <AnswerFeedback
-        v-else-if="screen === 'feedback'"
-        :question="currentQuestion"
-        :question-number="questionIndex + 1"
-        :total-questions="questions.length"
-        :is-correct="isCorrect"
-        @next="nextStep"
-        @home="goHome"
-      />
-      <ResultScreen
-        v-else
-        :score="score"
-        :total-questions="questions.length"
-        @restart="startQuiz"
-        @home="goHome"
-      />
+        <template v-else-if="screen === 'quiz'">
+          <QuizQuestion
+            :question="currentQuestion"
+            :question-number="questionIndex + 1"
+            :total-questions="questions.length"
+            :disabled="loading || !authReady || auth.busy || pendingAnswer !== null"
+            @answer="chooseAnswer"
+            @home="goHome"
+          />
+          <div v-if="pendingAnswer && !loading" class="answer-retry">
+            <div v-show="needsLogin">
+              <p>Logga in på samma konto för att fortsätta med det valda svaret.</p>
+              <LoginAuthorization @login-success="retryAnswer" />
+            </div>
+            <button
+              v-if="!needsLogin"
+              class="button button-primary"
+              :disabled="!authReady || auth.busy"
+              @click="retryAnswer"
+            >
+              Försök igen med samma svar
+            </button>
+          </div>
+        </template>
+        <AnswerFeedback
+          v-else-if="screen === 'feedback'"
+          :question="currentQuestion"
+          :question-number="questionIndex + 1"
+          :total-questions="questions.length"
+          :is-correct="isCorrect"
+          @next="nextStep"
+          @home="goHome"
+        />
+        <ResultScreen
+          v-else
+          :score="score"
+          :total-questions="questions.length"
+          @restart="startQuiz"
+          @home="goHome"
+        />
       </template>
     </main>
     <footer class="footer-note">
-      <span aria-hidden="true">✦</span> Små frågor, stora upptäckter <span aria-hidden="true">✦</span>
+      <span aria-hidden="true">✦</span> Små frågor, stora upptäckter
+      <span aria-hidden="true">✦</span>
     </footer>
   </div>
 </template>
@@ -425,8 +399,15 @@ function nextStep() {
 }
 
 @media (max-width: 700px) {
-  .top-navigation { gap: 2px; }
-  .top-link { padding: 8px; font-size: 12px; }
-  .age-badge { display: none; }
+  .top-navigation {
+    gap: 2px;
+  }
+  .top-link {
+    padding: 8px;
+    font-size: 12px;
+  }
+  .age-badge {
+    display: none;
+  }
 }
 </style>

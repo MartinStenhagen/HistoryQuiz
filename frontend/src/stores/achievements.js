@@ -10,6 +10,12 @@ export const useAchievementsStore = defineStore('achievements', () => {
   const statistics = ref(null)
   const loading = ref(false)
   const error = ref('')
+  const icons = {
+    FIRST_ANSWER: '🌱',
+    TEN_CORRECT: '🧠',
+    TEN_UNIQUE_CORRECT: '🧭',
+    THREE_IN_A_ROW: '🔥',
+  }
 
   let requestVersion = 0
 
@@ -33,9 +39,7 @@ export const useAchievementsStore = defineStore('achievements', () => {
     loading.value = true
     error.value = ''
 
-    const isCurrent = () =>
-      currentRequest === requestVersion &&
-      accountVersion === auth.version
+    const isCurrent = () => currentRequest === requestVersion && accountVersion === auth.version
 
     try {
       const data = await api('/api/me/achievements')
@@ -48,7 +52,10 @@ export const useAchievementsStore = defineStore('achievements', () => {
         return
       }
 
-      achievements.value = data.achievements
+      achievements.value = data.achievements.map((item) => ({
+        ...item,
+        icon: icons[item.code] ?? '🏅',
+      }))
       statistics.value = data.statistics
     } catch (err) {
       if (!isCurrent()) return
@@ -65,9 +72,7 @@ export const useAchievementsStore = defineStore('achievements', () => {
 
   watch(() => auth.version, reset, { flush: 'sync' })
 
-  const unlockedCount = computed(
-    () => achievements.value.filter((item) => item.unlocked).length,
-  )
+  const unlockedCount = computed(() => achievements.value.filter((item) => item.unlocked).length)
 
   return {
     achievements,

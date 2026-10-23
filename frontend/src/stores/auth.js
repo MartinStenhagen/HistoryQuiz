@@ -7,10 +7,10 @@ export const useAuthStore = defineStore('auth', () => {
   const status = ref('checking')
   const error = ref('')
   const version = ref(0)
+  const busy = ref(false)
+  let operation = 0
 
-  const isAuthenticated = computed(
-    () => status.value === 'authenticated',
-  )
+  const isAuthenticated = computed(() => status.value === 'authenticated')
 
   function setUser(value) {
     user.value = value
@@ -20,21 +20,24 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function restore() {
-    const startedAtVersion = version.value
+    if (busy.value) return
+    const currentOperation = ++operation
     status.value = 'checking'
     error.value = ''
 
     try {
       const data = await api('/api/me')
 
-      if (version.value !== startedAtVersion) return
+      if (operation !== currentOperation) return
       setUser(data.user)
     } catch (err) {
-      if (version.value !== startedAtVersion) return
+      if (operation !== currentOperation) return
 
       if (err.status === 401) {
         setUser(null)
       } else {
+        user.value = null
+        version.value += 1
         status.value = 'error'
         error.value = 'Kunde inte kontrollera inloggningen.'
       }
@@ -42,20 +45,43 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(username, password) {
-    const data = await api('/api/login', {
-      method: 'POST',
-      body: { username, password },
-    })
-
-    setUser(data.user)
+    if (busy.value) throw new Error('Ett kontoanrop pågår redan.')
+    const currentOperation = ++operation
+    busy.value = true
+    try {
+      const data = await api('/api/login', {
+        method: 'POST',
+        body: { username, password },
+      })
+      if (operation === currentOperation) setUser(data.user)
+    } catch (err) {
+      // Vid ett tappat nätverkssvar kan servern ändå ha ändrat cookien.
+      if (!err.status || err.status >= 500) {
+        user.value = null
+        status.value = 'error'
+        error.value = 'Kunde inte bekräfta inloggningen. Kontrollera igen.'
+        version.value += 1
+      }
+      throw err
+    } finally {
+      busy.value = false
+    }
   }
 
   async function logout() {
-    await api('/api/logout', { method: 'POST' })
-    setUser(null)
+    if (busy.value) throw new Error('Ett kontoanrop pågår redan.')
+    ++operation
+    busy.value = true
+    try {
+      await api('/api/logout', { method: 'POST' })
+      setUser(null)
+    } finally {
+      busy.value = false
+    }
   }
 
   function expire() {
+    ++operation
     setUser(null)
   }
 
@@ -64,6 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
     status,
     error,
     version,
+    busy,
     isAuthenticated,
     restore,
     login,
