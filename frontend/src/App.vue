@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, RouterView } from 'vue-router'
+import AchievementUnlockNotice from './components/AchievementUnlockNotice.vue'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
 import RegisterUser from './components/RegisterUser.vue'
@@ -21,6 +22,8 @@ const topics = ref([])
 const selectedTopicId = ref(null)
 const topicsLoading = ref(false)
 const topicsError = ref('')
+const achievementNotices = ref([])
+let nextNoticeId = 0
 
 const currentQuestion = computed(
   () => questions.value[questionIndex.value]
@@ -61,6 +64,12 @@ const handleLogout = () => {
   currentUser.value = null;
   isAuthenticated.value = false;
 };
+
+function dismissAchievementNotice(noticeId) {
+  achievementNotices.value = achievementNotices.value.filter(
+    (notice) => notice.id !== noticeId
+  )
+}
 
 async function loadTopics() {
   if (topicsLoading.value) return
@@ -104,6 +113,7 @@ function goHome() {
   score.value = 0
   isCorrect.value = false
   errorMessage.value = ''
+  achievementNotices.value = []
 }
 
 async function startQuiz() {
@@ -190,9 +200,16 @@ async function chooseAnswer(optionId) {
       score.value += 1
     }
 
-    achievementsStore.recordAnswer(
-    question.id,
-    result.isCorrect
+    const newlyUnlocked = achievementsStore.recordAnswer(
+      question.id,
+      result.isCorrect
+    )
+
+    achievementNotices.value.push(
+      ...newlyUnlocked.map((achievement) => ({
+        id: nextNoticeId++,
+        achievement,
+      }))
     )
 
     screen.value = 'feedback'
@@ -236,6 +253,18 @@ function nextStep() {
         <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
       </nav>
     </header>
+    <aside
+      v-if="achievementNotices.length && $route.name === 'home' && ['quiz', 'feedback'].includes(screen)"
+      class="achievement-notices"
+      aria-label="Nya utmärkelser"
+    >
+      <AchievementUnlockNotice
+        v-for="notice in achievementNotices"
+        :key="notice.id"
+        :achievement="notice.achievement"
+        @dismiss="dismissAchievementNotice(notice.id)"
+      />
+    </aside>
     <main>
       <RouterView v-if="['teacher-statistics', 'achievements'].includes($route.name)" />
       <template v-else>
@@ -326,6 +355,18 @@ function nextStep() {
 </template>
 
 <style scoped>
+.achievement-notices {
+  position: fixed;
+  z-index: 20;
+  top: 96px;
+  right: max(24px, calc((100vw - 1120px) / 2));
+  display: grid;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.achievement-notices > * { pointer-events: auto; }
+
 .top-navigation {
   display: flex;
   align-items: center;
@@ -348,6 +389,13 @@ function nextStep() {
 }
 
 @media (max-width: 700px) {
+  .achievement-notices {
+    top: 78px;
+    right: 12px;
+    left: 12px;
+    justify-items: center;
+  }
+
   .top-navigation { gap: 2px; }
   .top-link { padding: 8px; font-size: 12px; }
   .age-badge { display: none; }

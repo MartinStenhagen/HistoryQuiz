@@ -6,10 +6,22 @@ export const useAchievementsStore = defineStore('achievements', () => {
   const answers = ref([])
 
   function recordAnswer(questionId, isCorrect) {
+    const previouslyUnlocked = new Set(
+      achievements.value
+        .filter((achievement) => achievement.progress >= achievement.target)
+        .map((achievement) => achievement.code)
+    )
+
     answers.value.push({
       questionId,
       isCorrect,
     })
+
+    return achievements.value.filter(
+      (achievement) =>
+        achievement.progress >= achievement.target &&
+        !previouslyUnlocked.has(achievement.code)
+    )
   }
 
   const achievements = computed(() => {
