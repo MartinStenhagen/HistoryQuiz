@@ -18,5 +18,16 @@ module.exports = async function requireAuth(req, res, next) {
   }
 
   req.user = user;
+
+  // Klientens förväntade konto är bara ett skydd vid kontobyte i en annan flik.
+  // Ägaren till sparade svar hämtas alltid från den verifierade sessionen ovan.
+  const expectedAccount = req.get('X-HistoryQuiz-Account');
+  if (expectedAccount !== undefined && expectedAccount !== String(user.id)) {
+    return res.status(409).json({
+      code: 'ACCOUNT_CHANGED',
+      error: 'Kontot har ändrats. Logga in på kontot där försöket påbörjades.',
+    });
+  }
+
   next();
 };

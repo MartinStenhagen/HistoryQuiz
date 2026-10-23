@@ -2,6 +2,7 @@ const database = require('./connection');
 
 module.exports = async function withUserTransaction(userId, work) {
   const connection = await database.getConnection();
+  let usable = true;
 
   try {
     await connection.beginTransaction();
@@ -23,9 +24,15 @@ module.exports = async function withUserTransaction(userId, work) {
     await connection.commit();
     return result;
   } catch (error) {
-    await connection.rollback();
+    try {
+      await connection.rollback();
+    } catch {
+      // En anslutning med okänt transaktionstillstånd ska inte återanvändas.
+      usable = false;
+      connection.destroy();
+    }
     throw error;
   } finally {
-    connection.release();
+    if (usable) connection.release();
   }
 };

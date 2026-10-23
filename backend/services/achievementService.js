@@ -1,6 +1,6 @@
 async function readProgress(connection, userId) {
     const [statisticsRows] = await connection.execute(
-        'SELECT * FROM _v_user_statistics WHERE user_id = ?',
+        'SELECT * FROM v_user_statistics WHERE user_id = ?',
         [userId]
     );
     

@@ -131,6 +131,7 @@ exports.saveAnswer = async (req, res) => {
 
   if (
     typeof requestKey !== 'string' ||
+    requestKey.length !== 36 ||
     !uuidV4.test(requestKey)
   ) {
     return res.status(400).json({

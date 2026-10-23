@@ -1,26 +1,13 @@
 const express = require('express');
-const cors = require('cors');
-
-const app = express();
-const port = 3000;
-
-// Parse JSON bodies
-app.use(express.json());
-
-// For parsing application/x-www-form-urlencoded
-app.use(express.urlencoded({ extended: true }));
-
-app.use(cors());
-app.use(express.static('public'));
-
-const express = require('express');
-
 const {
   sessionMiddleware,
   sessionStore,
 } = require('./middleware/session');
 
 const app = express();
+if (!process.env.APP_ORIGIN) {
+  throw new Error('APP_ORIGIN saknas. Ange frontendens adress i backend/.env.');
+}
 const appOrigin = new URL(process.env.APP_ORIGIN).origin;
 
 app.use(express.json());
@@ -62,6 +49,13 @@ app.use('/api/topics', topicRoutes);
 
 app.use(authRoutes);
 
+const achievementRoutes = require('./routes/achievementRoutes');
+app.use('/api/me/achievements', achievementRoutes);
+
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'API-adressen finns inte.' });
+});
+
 app.use((error, req, res, next) => {
   if (res.headersSent) {
     return next(error);
@@ -86,13 +80,18 @@ app.use((error, req, res, next) => {
   });
 });
 
-sessionStore.onReady()
-  .then(() => {
-    app.listen(3000);
-  })
-  .catch((error) => {
-    console.error('Kunde inte starta sessionslagringen:', error);
-    process.exitCode = 1;
-  });
+if (require.main === module) {
+  sessionStore.onReady()
+    .then(() => {
+      const port = Number(process.env.PORT || 3000);
+      app.listen(port, () => console.log(`HistoryQuiz API lyssnar på port ${port}.`));
+    })
+    .catch(async (error) => {
+      console.error('Kunde inte starta sessionslagringen:', error);
+      await sessionStore.close();
+      await require('./database/connection').end();
+      process.exitCode = 1;
+    });
+}
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+module.exports = app;
