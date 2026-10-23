@@ -1,64 +1,81 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { achievementDefinitions } from '../data/demoAchievements'
+import { api } from '../api'
+import { useAuthStore } from './auth'
 
 export const useAchievementsStore = defineStore('achievements', () => {
-  const answers = ref([])
+  const auth = useAuthStore()
 
-  function recordAnswer(questionId, isCorrect) {
-    answers.value.push({
-      questionId,
-      isCorrect,
-    })
+  const achievements = ref([])
+  const statistics = ref(null)
+  const loading = ref(false)
+  const error = ref('')
+
+  let requestVersion = 0
+
+  function reset() {
+    requestVersion += 1
+    achievements.value = []
+    statistics.value = null
+    loading.value = false
+    error.value = ''
   }
 
-  const achievements = computed(() => {
-    const correctAnswers = answers.value.filter(
-      (answer) => answer.isCorrect
-    )
+  async function load() {
+    if (!auth.isAuthenticated) {
+      reset()
+      return
+    }
 
-    const uniqueCorrectQuestions = new Set(
-      correctAnswers.map((answer) => answer.questionId)
-    )
+    const currentRequest = ++requestVersion
+    const accountVersion = auth.version
 
-    let currentStreak = 0
-    let bestStreak = 0
+    loading.value = true
+    error.value = ''
 
-    for (const answer of answers.value) {
-      if (answer.isCorrect) {
-        currentStreak += 1
-        bestStreak = Math.max(bestStreak, currentStreak)
-      } else {
-        currentStreak = 0
+    const isCurrent = () =>
+      currentRequest === requestVersion &&
+      accountVersion === auth.version
+
+    try {
+      const data = await api('/api/me/achievements')
+
+      if (!isCurrent()) return
+
+      if (data.userId !== auth.user?.id) {
+        reset()
+        await auth.restore()
+        return
       }
-    }
 
-    const progressByCode = {
-      FIRST_ANSWER: answers.value.length,
-      TEN_CORRECT: correctAnswers.length,
-      TEN_UNIQUE_CORRECT: uniqueCorrectQuestions.size,
-      THREE_IN_A_ROW: bestStreak,
-    }
+      achievements.value = data.achievements
+      statistics.value = data.statistics
+    } catch (err) {
+      if (!isCurrent()) return
 
-    return achievementDefinitions.map((achievement) => ({
-      ...achievement,
-      progress: Math.min(
-        progressByCode[achievement.code] ?? 0,
-        achievement.target
-      ),
-    }))
-  })
+      if (err.status === 401) {
+        auth.expire()
+      } else {
+        error.value = 'Kunde inte hämta utmärkelserna.'
+      }
+    } finally {
+      if (isCurrent()) loading.value = false
+    }
+  }
+
+  watch(() => auth.version, reset, { flush: 'sync' })
 
   const unlockedCount = computed(
-    () => achievements.value.filter(
-      (achievement) => achievement.progress >= achievement.target
-    ).length
+    () => achievements.value.filter((item) => item.unlocked).length,
   )
 
   return {
-    answers,
     achievements,
+    statistics,
+    loading,
+    error,
     unlockedCount,
-    recordAnswer,
+    load,
+    reset,
   }
 })
