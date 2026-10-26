@@ -107,3 +107,52 @@ exports.answerQuestion = async (req, res) => {
         });
     }
 };
+
+const answerAttemptService = require('../services/answerAttemptService');
+
+exports.saveAnswer = async (req, res) => {
+  const questionId = Number(req.params.id);
+  const { selectedOptionId, requestKey } = req.body ?? {};
+
+  if (
+    !/^\d+$/.test(req.params.id) ||
+    !Number.isSafeInteger(questionId) ||
+    questionId < 1 ||
+    !Number.isSafeInteger(selectedOptionId) ||
+    selectedOptionId < 1
+  ) {
+    return res.status(400).json({
+      error: 'Fråga och svarsalternativ måste ha giltiga ID:n.',
+    });
+  }
+
+  const uuidV4 =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  if (
+    typeof requestKey !== 'string' ||
+    requestKey.length !== 36 ||
+    !uuidV4.test(requestKey)
+  ) {
+    return res.status(400).json({
+      error: 'requestKey måste vara ett giltigt UUID.',
+    });
+  }
+
+  try {
+    const result = await answerAttemptService.saveAnswer({
+      userId: req.user.id,
+      questionId,
+      selectedOptionId,
+      requestKey: requestKey.toLowerCase(),
+    });
+
+    res.json(result);
+  } catch (error) {
+    if (error.code === 'INVALID_OPTION') {
+      error.status = 400;
+    }
+
+    throw error;
+  }
+};

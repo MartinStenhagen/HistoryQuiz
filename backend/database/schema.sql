@@ -73,6 +73,7 @@ CREATE TABLE answer_attempts (
     selected_option_id INT UNSIGNED NOT NULL,
     is_correct BOOLEAN NOT NULL,
     request_key CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    response_json JSON NULL,
     answered_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     UNIQUE KEY uq_attempts_request (user_id, request_key),
     KEY ix_attempts_user_order (user_id, id),
@@ -140,3 +141,13 @@ INSERT INTO achievements (code, name, description, metric, target_value) VALUES
 
 -- Inga anvandare eller lösenord skapas av detta skript.
 -- Node.js måste uppratthalla publiceringsregler, behörigheter och rättning.
+
+CREATE TABLE sessions (
+    session_id VARCHAR(128)
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    expires INT UNSIGNED NOT NULL,
+    data MEDIUMTEXT
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+    PRIMARY KEY (session_id),
+    KEY ix_sessions_expires (expires)
+) ENGINE=InnoDB;

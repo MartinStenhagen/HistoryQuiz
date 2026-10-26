@@ -55,4 +55,4 @@ async function execute(sql, parameters = []) {
     }
 }
 
-module.exports = { execute, getConnection, end: () => pool.end() };
+module.exports = { pool, execute, getConnection, end: () => pool.end() };
