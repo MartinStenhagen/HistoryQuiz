@@ -120,7 +120,6 @@ async function getStudents() {
           </tbody>
         </table>
       </div>
-      <p class="table-note"><span aria-hidden="true">ℹ️</span> Namn och resultat är påhittade exempel och hämtas inte från elever.</p>
     </section>
   </section>
 </template>
