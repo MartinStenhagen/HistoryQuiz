@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed,ref, onMounted } from 'vue'
 
 
 function accuracyClass(value) {
@@ -10,7 +10,9 @@ function accuracyClass(value) {
 
 const students = ref([]);
 const selectedStudent = ref(null);
-const totalAnswers = calculateTotalAnswers(); 
+const totalAnswers = computed(() => {
+  return students.value.reduce((sum, student) => sum + Number(student.total_answers || 0), 0);
+}); 
 const errorMessage = ref('');
     
 async function getStudents() {
@@ -25,15 +27,6 @@ async function getStudents() {
                 errorMessage.value = err.message;
             }
     }
-
-function calculateTotalAnswers(){
-  let totAnswers = 0;
-  for (let i = 0; i < students.value.length; i++ ){
-    totAnswers += students.value[i].total_answers;
-  }
-  console.log(totAnswers);
-  return totAnswers;
-}
 
     async function selectStudent(userId) {
         errorMessage.value = '';
