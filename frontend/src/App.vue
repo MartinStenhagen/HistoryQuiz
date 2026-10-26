@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
+import AchievementUnlockNotice from './components/AchievementUnlockNotice.vue'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
 import RegisterUser from './components/RegisterUser.vue'
@@ -96,6 +97,18 @@ const topics = ref([])
 const selectedTopicId = ref(null)
 const topicsLoading = ref(false)
 const topicsError = ref('')
+const achievementNotices = ref([])
+let nextNoticeId = 0
+
+watch(() => auth.version, () => {
+  achievementNotices.value = []
+}, { flush: 'sync' })
+
+function dismissAchievementNotice(noticeId) {
+  achievementNotices.value = achievementNotices.value.filter(
+    (notice) => notice.id !== noticeId
+  )
+}
 
 const currentQuestion = computed(() => questions.value[questionIndex.value])
 
@@ -158,6 +171,7 @@ function goHome() {
   score.value = 0
   isCorrect.value = false
   errorMessage.value = ''
+  achievementNotices.value = []
   void router.push('/')
 }
 
@@ -193,6 +207,8 @@ async function startQuiz() {
       answers: question.options,
     }))
 
+    // Läs befintliga utmärkelser före första svaret så att gamla inte firas igen.
+    if (auth.isAuthenticated) await achievementsStore.load()
     screen.value = 'quiz'
   } catch (error) {
     console.error(error)
@@ -228,7 +244,18 @@ async function chooseAnswer(optionId) {
     }
 
     screen.value = 'feedback'
-    if (result.saved) void achievementsStore.load()
+    if (result.saved) {
+      const accountVersion = auth.version
+      const newlyUnlocked = await achievementsStore.load()
+      if (auth.version === accountVersion) {
+        achievementNotices.value.push(
+          ...newlyUnlocked.map((achievement) => ({
+            id: nextNoticeId++,
+            achievement,
+          }))
+        )
+      }
+    }
   } catch (error) {
     console.error(error)
     errorMessage.value =
@@ -278,6 +305,18 @@ function nextStep() {
         <span class="age-badge"><span aria-hidden="true">✦</span> Historia för nyfikna</span>
       </nav>
     </header>
+    <aside
+      v-if="achievementNotices.length && $route.name === 'home' && ['quiz', 'feedback'].includes(screen)"
+      class="achievement-notices"
+      aria-label="Nya utmärkelser"
+    >
+      <AchievementUnlockNotice
+        v-for="notice in achievementNotices"
+        :key="notice.id"
+        :achievement="notice.achievement"
+        @dismiss="dismissAchievementNotice(notice.id)"
+      />
+    </aside>
     <main>
       <RouterView v-if="['teacher-statistics', 'achievements'].includes($route.name)" />
       <template v-else>
@@ -377,6 +416,18 @@ function nextStep() {
 </template>
 
 <style scoped>
+.achievement-notices {
+  position: fixed;
+  z-index: 20;
+  top: 96px;
+  right: max(24px, calc((100vw - 1120px) / 2));
+  display: grid;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.achievement-notices > * { pointer-events: auto; }
+
 .top-navigation {
   display: flex;
   align-items: center;
@@ -399,6 +450,13 @@ function nextStep() {
 }
 
 @media (max-width: 700px) {
+  .achievement-notices {
+    top: 78px;
+    right: 12px;
+    left: 12px;
+    justify-items: center;
+  }
+
   .top-navigation {
     gap: 2px;
   }

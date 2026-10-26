@@ -18,9 +18,11 @@ export const useAchievementsStore = defineStore('achievements', () => {
   }
 
   let requestVersion = 0
+  let hasLoaded = false
 
   function reset() {
     requestVersion += 1
+    hasLoaded = false
     achievements.value = []
     statistics.value = null
     loading.value = false
@@ -30,7 +32,7 @@ export const useAchievementsStore = defineStore('achievements', () => {
   async function load() {
     if (!auth.isAuthenticated) {
       reset()
-      return
+      return []
     }
 
     const currentRequest = ++requestVersion
@@ -44,27 +46,40 @@ export const useAchievementsStore = defineStore('achievements', () => {
     try {
       const data = await api('/api/me/achievements')
 
-      if (!isCurrent()) return
+      if (!isCurrent()) return []
 
       if (data.userId !== auth.user?.id) {
         reset()
         await auth.restore()
-        return
+        return []
       }
+
+      const previouslyUnlocked = new Set(
+        achievements.value.filter((item) => item.unlocked).map((item) => item.code)
+      )
+      const hadBaseline = hasLoaded
 
       achievements.value = data.achievements.map((item) => ({
         ...item,
         icon: icons[item.code] ?? '🏅',
       }))
       statistics.value = data.statistics
+      hasLoaded = true
+
+      // Serverns tilldelningar avgör vad som är upplåst.
+      // Första hämtningen är en baslinje, inte en lista med nya utmärkelser.
+      return hadBaseline
+        ? achievements.value.filter((item) => item.unlocked && !previouslyUnlocked.has(item.code))
+        : []
     } catch (err) {
-      if (!isCurrent()) return
+      if (!isCurrent()) return []
 
       if (err.status === 401) {
         auth.expire()
       } else {
         error.value = 'Kunde inte hämta utmärkelserna.'
       }
+      return []
     } finally {
       if (isCurrent()) loading.value = false
     }
