@@ -62,7 +62,7 @@ async function getQuestions(limit, topicId = null) {
     return Array.from(questionsById.values());
 }
 
-async function answerQuestion(questionId, selectedOptionId) {
+async function answerQuestion(questionId, selectedOptionId, executor = database) {
     const sql = `
         SELECT
             q.explanation,
@@ -76,7 +76,7 @@ async function answerQuestion(questionId, selectedOptionId) {
         ORDER BY o.sort_order
     `;
 
-    const [rows] = await database.execute(sql, [questionId, 'published']);
+    const [rows] = await executor.execute(sql, [questionId, 'published']);
 
     // Samma krav som GET: fyra alternativ och exakt ett rätt.
     const correctOptions = rows.filter(

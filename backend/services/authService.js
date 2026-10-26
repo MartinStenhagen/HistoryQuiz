@@ -1,19 +1,23 @@
 const argon2 = require('argon2');
 const connectionMySQL = require('../database/connection');
 
-async function login(userName, userPass) {
-    const user = await getUser(userName);
-    if(!user){
-        return null;
-    }
-    
-    const isValid = await argon2.verify(user.password_hash, userPass);
-    if (!isValid){
-        return null;
-    }
+async function login(username, password) {
+  const user = await getUser(username);
 
-    const{password_hash, ...safeUser} = user;
-    return safeUser;
+  if (!user || Number(user.is_active) !== 1) {
+    return null;
+  }
+
+  const validPassword = await argon2.verify(
+    user.password_hash,
+    password
+  );
+
+  if (!validPassword) {
+    return null;
+  }
+
+  return getSessionUser(user.id);
 }
 
 async function getUser(userN) {
@@ -49,8 +53,27 @@ async function registerUser(userN, displayN, userPass) {
     };
 }
 
+async function getSessionUser(userId) {
+  const [rows] = await connectionMySQL.execute(
+    `
+    SELECT
+      u.id,
+      u.username,
+      u.display_name AS displayName,
+      r.code AS role
+    FROM users AS u
+    JOIN roles AS r ON r.id = u.role_id
+    WHERE u.id = ?
+      AND u.is_active = 1
+    `,
+    [userId]
+  );
+
+  return rows[0] ?? null;
+}
 
 module.exports = {
     registerUser,
-    login
+    login,
+    getSessionUser
 }

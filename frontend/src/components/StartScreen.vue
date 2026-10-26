@@ -1,6 +1,6 @@
 <script setup>
-import {ref} from 'vue';
-import loginAuthorization from './loginAuthorization.vue';
+import { ref } from 'vue'
+import loginAuthorization from './loginAuthorization.vue'
 defineProps({
   topics: {
     type: Array,
@@ -21,15 +21,16 @@ defineProps({
   currentUser: {
     type: Object,
     default: null,
-  }
+  },
+  accountBusy: { type: Boolean, default: false },
 })
 
 const handleLoginSuccess = (userData) => {
-  showLoginPopup.value = false;
-  emit('login-success', userData);
+  showLoginPopup.value = false
+  emit('login-success', userData)
 }
 
-const showLoginPopup = ref(false);
+const showLoginPopup = ref(false)
 
 const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-success'])
 </script>
@@ -39,7 +40,11 @@ const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-
     <div class="welcome-copy">
       <p class="eyebrow"><span aria-hidden="true">✦</span> Dags för en tidsresa!</p>
       <h1 id="welcome-title">
-        {{ isAuthenticated ? `Välkommen, ${currentUser?.displayName || 'historiedetektiv'}!` : 'Hej, historiedetektiv!' }}
+        {{
+          isAuthenticated
+            ? `Välkommen, ${currentUser?.displayName || 'historiedetektiv'}!`
+            : 'Hej, historiedetektiv!'
+        }}
       </h1>
       <p class="intro">
         Följ med på en rolig resa bakåt i tiden. Svara på historiefrågor och upptäck spännande saker
@@ -56,11 +61,7 @@ const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-
         >
           <option disabled value="">Välj ett ämne</option>
 
-          <option
-            v-for="topic in topics"
-            :key="topic.id"
-            :value="topic.id"
-          >
+          <option v-for="topic in topics" :key="topic.id" :value="topic.id">
             {{ topic.name }}
           </option>
         </select>
@@ -80,37 +81,39 @@ const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-
             <button
               class="back-button register-link"
               type="button"
-              :disabled="disabled"
+              :disabled="disabled || accountBusy"
               @click="showLoginPopup = !showLoginPopup"
             >
               {{ showLoginPopup ? 'Stäng' : 'Logga in' }}
             </button>
             <section v-if="showLoginPopup" class="login-popup">
-              <loginAuthorization @login-success="handleLoginSuccess" />
+              <loginAuthorization :disabled="disabled" @login-success="handleLoginSuccess" />
             </section>
             <button
               class="back-button register-link"
               type="button"
-              :disabled="disabled"
+              :disabled="disabled || accountBusy"
               @click="$emit('register')"
             >
               Skapa konto (valfritt)
             </button>
           </section>
-          
         </template>
 
-        <section v-else >
+        <section v-else>
           <button
             class="back-button register-link"
             type="button"
+            :disabled="disabled || accountBusy"
             @click="$emit('logout')"
           >
             Logga ut
           </button>
         </section>
       </section>
-      <p class="reassurance"><span aria-hidden="true">☀</span> Ingen tidspress – här lär vi oss tillsammans.</p>
+      <p class="reassurance">
+        <span aria-hidden="true">☀</span> Ingen tidspress – här lär vi oss tillsammans.
+      </p>
     </div>
     <div class="welcome-art" aria-hidden="true">
       <span class="art-spark spark-one">✦</span>

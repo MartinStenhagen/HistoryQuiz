@@ -1,5 +1,6 @@
 <script setup>
 import { reactive, ref } from 'vue'
+import { api } from '../api'
 
 const emit = defineEmits(['home', 'busy-change'])
 const formData = reactive({ username: '', displayName: '', password: '' })
@@ -16,16 +17,10 @@ async function handleRegister() {
   successMessage.value = ''
 
   try {
-    const response = await fetch('/api/register', {
+    await api('/api/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
+      body: { ...formData },
     })
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Kunde inte registrera användaren.')
-    }
 
     successMessage.value = 'Kontot är skapat! Du kan gå tillbaka och spela quizet.'
     formData.username = ''
@@ -53,13 +48,31 @@ async function handleRegister() {
       <fieldset :disabled="loading">
         <legend class="form-legend">Dina kontouppgifter</legend>
         <label for="register-username">Användarnamn</label>
-        <input id="register-username" v-model.trim="formData.username" autocomplete="username" maxlength="64" required />
+        <input
+          id="register-username"
+          v-model.trim="formData.username"
+          autocomplete="username"
+          maxlength="64"
+          required
+        />
 
         <label for="register-display-name">Visningsnamn</label>
-        <input id="register-display-name" v-model.trim="formData.displayName" autocomplete="nickname" maxlength="100" required />
+        <input
+          id="register-display-name"
+          v-model.trim="formData.displayName"
+          autocomplete="nickname"
+          maxlength="100"
+          required
+        />
 
         <label for="register-password">Lösenord</label>
-        <input id="register-password" v-model="formData.password" type="password" autocomplete="new-password" required />
+        <input
+          id="register-password"
+          v-model="formData.password"
+          type="password"
+          autocomplete="new-password"
+          required
+        />
 
         <button class="button button-primary" type="submit">
           {{ loading ? 'Skapar konto…' : 'Skapa konto' }}
