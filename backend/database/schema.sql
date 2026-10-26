@@ -73,6 +73,7 @@ CREATE TABLE answer_attempts (
     selected_option_id INT UNSIGNED NOT NULL,
     is_correct BOOLEAN NOT NULL,
     request_key CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    response_json JSON NULL,
     answered_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     UNIQUE KEY uq_attempts_request (user_id, request_key),
     KEY ix_attempts_user_order (user_id, id),
@@ -150,6 +151,3 @@ CREATE TABLE sessions (
     PRIMARY KEY (session_id),
     KEY ix_sessions_expires (expires)
 ) ENGINE=InnoDB;
-
-ALTER TABLE answer_attempts
-    ADD COLUMN response_json JSON NULL;
