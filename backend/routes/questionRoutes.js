@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const questionController = require('../controllers/questionController');
 
-const requireAuth = require('../middleware/requireAuth');
+const { requireAuth } = require('../middleware/requireAuth');
 
 router.get('/', questionController.getQuestions);
 
