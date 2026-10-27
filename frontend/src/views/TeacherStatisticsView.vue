@@ -9,10 +9,30 @@ function accuracyClass(value) {
 }
 
 const students = ref([]);
-const selectedStudent = ref(null);
 const totalAnswers = computed(() => {
   return students.value.reduce((sum, student) => sum + Number(student.total_answers || 0), 0);
 }); 
+
+const totalCorrect = computed(() => {
+  return students.value.reduce((sum, student) => sum + Number(student.total_correct || 0), 0);
+})
+
+const totalCorrectPercent = computed(() => {
+  const totals = students.value.reduce(
+    (acc, student) => {
+      acc.correct += Number(student.total_correct || 0);
+      acc.wrong += Number(student.total_wrong || 0);
+      return acc;
+    },
+    { correct: 0, wrong: 0 }
+  );
+
+  const totalAnswers = totals.correct + totals.wrong;
+  if (totalAnswers === 0) return 0;
+
+  return Number(((totals.correct / totalAnswers) * 100).toFixed(1));
+});
+
 const errorMessage = ref('');
     
 async function getStudents() {
@@ -28,18 +48,6 @@ async function getStudents() {
             }
     }
 
-    async function selectStudent(userId) {
-        errorMessage.value = '';
-        try {
-            const response = await fetch(`/api/students/${userId}/results`);
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error);
-            selectedStudent.value = data;
-        } catch (err) {
-            console.error("Server returned non-JSON:", text)
-            errorMessage.value = err.message;
-        }
-}
 
     onMounted(() => {
         getStudents();
@@ -68,7 +76,7 @@ async function getStudents() {
       </article>
       <article class="summary-card accuracy-card">
         <span class="summary-icon" aria-hidden="true">🌟</span>
-        <div><p>Rätt svar totalt</p><strong> <small>(%)</small></strong></div>
+        <div><p>Rätt svar totalt</p><strong>{{ totalCorrect }} <small>{{ totalCorrectPercent }}(%)</small></strong></div>
       </article>
     </div>
 
