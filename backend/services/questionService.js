@@ -1,6 +1,6 @@
 const database = require('../database/connection');
 
-async function getQuestions(limit, topicId = null) {
+async function getQuestions(limit, topicId = null, difficulty = null) {
     // Kontrollen skyddar även om servicen senare anropas från annan kod.
     if (!Number.isInteger(limit) || limit < 1 || limit > 20) {
         throw new Error('Ogiltigt antal frågor.');
@@ -8,6 +8,10 @@ async function getQuestions(limit, topicId = null) {
 
     if (topicId !== null && (!Number.isSafeInteger(topicId) || topicId < 1)) {
         throw new Error('Ogiltigt ämnes-ID.');
+    }
+
+    if (difficulty !== null && (!Number.isInteger(difficulty) || difficulty < 1 || difficulty > 3)) {
+        throw new Error('Ogiltig svårighetsgrad.');
     }
 
     const sql = `
@@ -25,6 +29,7 @@ async function getQuestions(limit, topicId = null) {
                 ON answer_options.question_id = questions.id
             WHERE questions.status = ?
                 AND (? IS NULL OR questions.topic_id = ?)
+                AND (? IS NULL OR questions.difficulty = ?)
             GROUP BY questions.id, questions.question_text
             HAVING COUNT(*) = 4
                 AND SUM(answer_options.is_correct) = 1
@@ -36,7 +41,13 @@ async function getQuestions(limit, topicId = null) {
         ORDER BY q.id, o.sort_order
     `;
 
-    const [rows] = await database.execute(sql, ['published', topicId, topicId]);
+    const [rows] = await database.execute(sql, [
+        'published',
+        topicId,
+        topicId,
+        difficulty,
+        difficulty,
+    ]);
 
     // SQL ger en rad per alternativ.
     // Alternativen samlas under respektive fråga.
