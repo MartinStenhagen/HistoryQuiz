@@ -62,7 +62,7 @@ async function getStudents() {
         <h1 id="teacher-title">Elevernas framsteg</h1>
         <p class="dashboard-intro">En snabb överblick över hur det går med historiefrågorna.</p>
       </div>
-      <span class="demo-label"><span aria-hidden="true">●</span> Exempeldata</span>
+      <span class="demo-label"><span aria-hidden="true">●</span>Elevestatistik</span>
     </header>
 
     <div class="summary-grid" aria-label="Sammanfattning">
