@@ -168,23 +168,27 @@ ORDER BY q.id, ao.sort_order;
 
 -- Mer historiska frågor
 -- Forntida Egypten
+
+USE historyQuizDb;
+
+-- Forntida Egypten
 INSERT INTO topics (name, description)
 VALUES ('Forntida Egypten', 'Frågor om det forntida Egyptens historia')
 ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id);
 
 SET @topic_id = LAST_INSERT_ID();
 
+-- Svårighetsgrad 1
 INSERT INTO questions
 (topic_id, question_text, explanation, difficulty, status, published_at)
-VALUES
-(@topic_id, 'Vilken flod var viktig för det forntida Egypten?',
- 'Nilen gav vatten och bördig jord till jordbruket.', 1, 'published', UTC_TIMESTAMP(6)),
-(@topic_id, 'Vad kallades de egyptiska bildtecknen?',
- 'De egyptiska bildtecknen kallas hieroglyfer.', 2, 'published', UTC_TIMESTAMP(6)),
-(@topic_id, 'Vilken egyptisk farao förknippas med graven som hittades nästan orörd 1922?',
- 'Tutankhamons grav upptäcktes av Howard Carter och hans team.', 3, 'published', UTC_TIMESTAMP(6));
+VALUES (
+    @topic_id,
+    'Vilken flod var viktig för det forntida Egypten?',
+    'Nilen gav vatten och bördig jord till jordbruket.',
+    1, 'published', UTC_TIMESTAMP(6)
+);
 
-SET @question_id = LAST_INSERT_ID() - 2;
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -193,7 +197,17 @@ VALUES
 (@question_id, 'Donau', 3, FALSE),
 (@question_id, 'Rhen', 4, FALSE);
 
-SET @question_id = @question_id + 1;
+-- Svårighetsgrad 2
+INSERT INTO questions
+(topic_id, question_text, explanation, difficulty, status, published_at)
+VALUES (
+    @topic_id,
+    'Vad kallades de egyptiska bildtecknen?',
+    'De egyptiska bildtecknen kallas hieroglyfer.',
+    2, 'published', UTC_TIMESTAMP(6)
+);
+
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -202,7 +216,17 @@ VALUES
 (@question_id, 'Runor', 3, FALSE),
 (@question_id, 'Alfabetisk skrift', 4, FALSE);
 
-SET @question_id = @question_id + 1;
+-- Svårighetsgrad 3
+INSERT INTO questions
+(topic_id, question_text, explanation, difficulty, status, published_at)
+VALUES (
+    @topic_id,
+    'Vilken egyptisk farao förknippas med graven som hittades nästan orörd 1922?',
+    'Tutankhamons grav upptäcktes av Howard Carter och hans team.',
+    3, 'published', UTC_TIMESTAMP(6)
+);
+
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -219,17 +243,17 @@ ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id);
 
 SET @topic_id = LAST_INSERT_ID();
 
+-- Svårighetsgrad 1
 INSERT INTO questions
 (topic_id, question_text, explanation, difficulty, status, published_at)
-VALUES
-(@topic_id, 'Vad använde vikingarna främst för att resa över havet?',
- 'Vikingarna använde bland annat långskepp.', 1, 'published', UTC_TIMESTAMP(6)),
-(@topic_id, 'Vad kallades vikingarnas gamla nordiska skriftsymboler?',
- 'Runor användes för att skriva i det fornnordiska samhället.', 2, 'published', UTC_TIMESTAMP(6)),
-(@topic_id, 'Vilken vikingaledare förknippas med upptäckten av Grönland?',
- 'Erik den röde förknippas med den nordiska bosättningen på Grönland.', 3, 'published', UTC_TIMESTAMP(6));
+VALUES (
+    @topic_id,
+    'Vad använde vikingarna främst för att resa över havet?',
+    'Vikingarna använde bland annat långskepp.',
+    1, 'published', UTC_TIMESTAMP(6)
+);
 
-SET @question_id = LAST_INSERT_ID() - 2;
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -238,7 +262,17 @@ VALUES
 (@question_id, 'Ubåtar', 3, FALSE),
 (@question_id, 'Tåg', 4, FALSE);
 
-SET @question_id = @question_id + 1;
+-- Svårighetsgrad 2
+INSERT INTO questions
+(topic_id, question_text, explanation, difficulty, status, published_at)
+VALUES (
+    @topic_id,
+    'Vad kallades vikingarnas gamla nordiska skriftsymboler?',
+    'Runor användes för att skriva i det fornnordiska samhället.',
+    2, 'published', UTC_TIMESTAMP(6)
+);
+
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -247,7 +281,17 @@ VALUES
 (@question_id, 'Latinska bokstäver', 3, FALSE),
 (@question_id, 'Kilskrift', 4, FALSE);
 
-SET @question_id = @question_id + 1;
+-- Svårighetsgrad 3
+INSERT INTO questions
+(topic_id, question_text, explanation, difficulty, status, published_at)
+VALUES (
+    @topic_id,
+    'Vilken vikingaledare förknippas med upptäckten av Grönland?',
+    'Erik den röde förknippas med den nordiska bosättningen på Grönland.',
+    3, 'published', UTC_TIMESTAMP(6)
+);
+
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -264,17 +308,17 @@ ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id);
 
 SET @topic_id = LAST_INSERT_ID();
 
+-- Svårighetsgrad 1
 INSERT INTO questions
 (topic_id, question_text, explanation, difficulty, status, published_at)
-VALUES
-(@topic_id, 'Vilket land ligger Sverige i för världsdel?',
- 'Sverige ligger i Europa.', 1, 'published', UTC_TIMESTAMP(6)),
-(@topic_id, 'Vilket år blev Gustav Vasa kung av Sverige?',
- 'Gustav Vasa blev kung år 1523.', 2, 'published', UTC_TIMESTAMP(6)),
-(@topic_id, 'Vilket år upplöstes unionen mellan Sverige och Norge?',
- 'Unionen mellan Sverige och Norge upplöstes 1905.', 3, 'published', UTC_TIMESTAMP(6));
+VALUES (
+    @topic_id,
+    'Vilken världsdel ligger Sverige i?',
+    'Sverige ligger i Europa.',
+    1, 'published', UTC_TIMESTAMP(6)
+);
 
-SET @question_id = LAST_INSERT_ID() - 2;
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -283,7 +327,17 @@ VALUES
 (@question_id, 'Asien', 3, FALSE),
 (@question_id, 'Sydamerika', 4, FALSE);
 
-SET @question_id = @question_id + 1;
+-- Svårighetsgrad 2
+INSERT INTO questions
+(topic_id, question_text, explanation, difficulty, status, published_at)
+VALUES (
+    @topic_id,
+    'Vilket år blev Gustav Vasa kung av Sverige?',
+    'Gustav Vasa blev kung år 1523.',
+    2, 'published', UTC_TIMESTAMP(6)
+);
+
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -292,7 +346,17 @@ VALUES
 (@question_id, '1611', 3, FALSE),
 (@question_id, '1809', 4, FALSE);
 
-SET @question_id = @question_id + 1;
+-- Svårighetsgrad 3
+INSERT INTO questions
+(topic_id, question_text, explanation, difficulty, status, published_at)
+VALUES (
+    @topic_id,
+    'Vilket år upplöstes unionen mellan Sverige och Norge?',
+    'Unionen mellan Sverige och Norge upplöstes 1905.',
+    3, 'published', UTC_TIMESTAMP(6)
+);
+
+SET @question_id = LAST_INSERT_ID();
 
 INSERT INTO answer_options (question_id, option_text, sort_order, is_correct)
 VALUES
@@ -300,4 +364,3 @@ VALUES
 (@question_id, '1865', 2, FALSE),
 (@question_id, '1905', 3, TRUE),
 (@question_id, '1918', 4, FALSE);
-
