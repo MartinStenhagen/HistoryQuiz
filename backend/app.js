@@ -54,6 +54,9 @@ app.use(teacherRoutes);
 const achievementRoutes = require('./routes/achievementRoutes');
 app.use('/api/me/achievements', achievementRoutes);
 
+const challengeRoutes = require('./routes/challengeRoutes');
+app.use('/api/challenges', challengeRoutes);
+
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'API-adressen finns inte.' });
 });

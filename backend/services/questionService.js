@@ -30,6 +30,7 @@ async function getQuestions(limit, topicId = null, difficulty = null) {
             WHERE questions.status = ?
                 AND (? IS NULL OR questions.topic_id = ?)
                 AND (? IS NULL OR questions.difficulty = ?)
+                AND questions.question_kind = 'regular'
             GROUP BY questions.id, questions.question_text
             HAVING COUNT(*) = 4
                 AND SUM(answer_options.is_correct) = 1
@@ -73,7 +74,7 @@ async function getQuestions(limit, topicId = null, difficulty = null) {
     return Array.from(questionsById.values());
 }
 
-async function answerQuestion(questionId, selectedOptionId, executor = database) {
+async function answerQuestion(questionId, selectedOptionId, executor = database, kind = 'regular') {
     const sql = `
         SELECT
             q.explanation,
@@ -84,10 +85,11 @@ async function answerQuestion(questionId, selectedOptionId, executor = database)
             ON o.question_id = q.id
         WHERE q.id = ?
             AND q.status = ?
+            AND q.question_kind = ?
         ORDER BY o.sort_order
     `;
 
-    const [rows] = await executor.execute(sql, [questionId, 'published']);
+    const [rows] = await executor.execute(sql, [questionId, 'published', kind]);
 
     // Samma krav som GET: fyra alternativ och exakt ett rätt.
     const correctOptions = rows.filter(
