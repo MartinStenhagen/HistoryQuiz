@@ -36,13 +36,7 @@ async function registerUser(userR, userN, displayN, userPass) {
         throw new Error('Standardrollen student saknas i databasen.');
     }
 
-    let userRole = 0;
-
-    if (userR === null){
-      userRole = roles[0].id;
-    }
-
-    userRole = userR;
+    const userRole = userR ?? roles[0].id;
     
     const passwordHash = await argon2.hash(userPass, {
         type: argon2.argon2id,

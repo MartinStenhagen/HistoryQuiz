@@ -130,8 +130,8 @@ async function getStudents() {
         </table>
       </div>
     </section>
-    <section>
-        <button @click="isFormVisible = true" v-if="!isFormVisible">Lägg till konto</button>
+    <section class="showRegistrationForm">
+        <h3 class="formButton" @click="isFormVisible = !isFormVisible">{{ isFormVisible ? 'Stäng' : 'Lägg till konto' }}</h3>
         <teacherUserRegistration v-if="isFormVisible" />
       </section>
   </section>
@@ -142,6 +142,20 @@ async function getStudents() {
   width: min(100%, 1000px);
   align-self: start;
   padding: 8px 0 22px;
+}
+
+.showRegistrationForm{
+  margin-top: 10px;
+}
+
+.formButton{
+  border-radius: 999px;
+  padding: 9px 13px;
+  color: #526078;
+  border-color: #c86b49;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .dashboard-heading,
