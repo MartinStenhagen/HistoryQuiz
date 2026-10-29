@@ -2,6 +2,8 @@
 import { reactive, ref } from 'vue'
 import { api } from '../api'
 
+const emit = defineEmits(['registration-success'])
+
 const formData = reactive({role: '', username: '', displayName: '', password: '' })
 const loading = ref(false)
 const errorMessage = ref('')
@@ -21,6 +23,7 @@ async function handleRegister() {
     })
 
     successMessage.value = 'Kontot är skapat!'
+    emit('registration-success');
     formData.role = ''
     formData.username = ''
     formData.displayName = ''

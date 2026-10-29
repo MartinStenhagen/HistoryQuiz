@@ -49,7 +49,6 @@ async function getStudents() {
             }
     }
 
-
     onMounted(() => {
         getStudents();
     });
@@ -132,7 +131,8 @@ async function getStudents() {
     </section>
     <section class="showRegistrationForm">
         <h3 class="formButton" @click="isFormVisible = !isFormVisible">{{ isFormVisible ? 'Stäng' : 'Lägg till konto' }}</h3>
-        <teacherUserRegistration v-if="isFormVisible" />
+        <teacherUserRegistration v-if="isFormVisible" 
+        @registration-success="getStudents"/>
       </section>
   </section>
 </template>
