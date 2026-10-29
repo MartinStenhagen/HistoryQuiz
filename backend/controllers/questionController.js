@@ -39,10 +39,27 @@ exports.getQuestions = async (req, res) => {
         }
     }
 
+    let difficulty = null;
+    const rawDifficulty = req.query.difficulty;
+
+    if (rawDifficulty !== undefined) {
+        if (
+            typeof rawDifficulty !== 'string' ||
+            !/^[1-3]$/.test(rawDifficulty)
+        ) {
+            return res.status(400).json({
+                error: 'difficulty måste vara 1, 2 eller 3.',
+            });
+        }
+
+        difficulty = Number(rawDifficulty);
+    }
+
     try {
         const questions = await questionService.getQuestions(
             limit,
-            topicId
+            topicId,
+            difficulty
         );
 
         return res.status(200).json({ questions });

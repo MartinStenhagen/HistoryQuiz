@@ -10,6 +10,8 @@ defineProps({
     type: Number,
     default: null,
   },
+  selectedDifficulty: { type: Number, default: 1 },
+  unlockedDifficulties: { type: Array, default: () => [1] },
   disabled: {
     type: Boolean,
     default: false,
@@ -32,7 +34,7 @@ const handleLoginSuccess = (userData) => {
 
 const showLoginPopup = ref(false)
 
-const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-success'])
+const emit = defineEmits(['start', 'topic-change', 'difficulty-change', 'register', 'logout', 'login-success'])
 </script>
 
 <template>
@@ -66,6 +68,36 @@ const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-
           </option>
         </select>
       </div>
+
+      <fieldset class="difficulty-picker" :disabled="disabled || selectedTopicId === null">
+        <legend>Välj svårighetsgrad</legend>
+        <div class="difficulty-options">
+          <button
+            v-for="difficulty in [1, 2, 3]"
+            :key="difficulty"
+            class="difficulty-option"
+            :class="{
+              'is-selected': selectedDifficulty === difficulty,
+              'is-locked': !unlockedDifficulties.includes(difficulty),
+            }"
+            type="button"
+            :disabled="disabled || selectedTopicId === null || !unlockedDifficulties.includes(difficulty)"
+            :aria-pressed="selectedDifficulty === difficulty"
+            @click="emit('difficulty-change', difficulty)"
+          >
+            <span class="difficulty-icon" aria-hidden="true">
+              {{ unlockedDifficulties.includes(difficulty) ? ['🌱', '🧭', '🏆'][difficulty - 1] : '🔒' }}
+            </span>
+            <span class="difficulty-label">Nivå {{ difficulty }}</span>
+            <span class="difficulty-state">
+              {{ unlockedDifficulties.includes(difficulty) ? (difficulty === 1 ? 'Start' : 'Upplåst') : 'Låst' }}
+            </span>
+          </button>
+        </div>
+        <p class="difficulty-hint">
+          Klara alla frågor rätt på en nivå för att låsa upp nästa i samma kategori. Framsteg sparas på den här enheten.
+        </p>
+      </fieldset>
 
       <button
         class="button button-primary start-button"
@@ -148,6 +180,52 @@ const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-
   outline-offset: 3px;
 }
 
+.difficulty-picker {
+  min-width: 0;
+  margin: 0 0 23px;
+  border: 0;
+  padding: 0;
+}
+
+.difficulty-picker legend {
+  margin-bottom: 10px;
+  color: #34415a;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.difficulty-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.difficulty-option {
+  min-height: 91px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  border: 2px solid #e8e3d9;
+  border-radius: 15px;
+  padding: 8px 5px;
+  color: #536078;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.difficulty-option:not(:disabled):hover { transform: translateY(-2px); border-color: #d6a25f; }
+.difficulty-option.is-selected { border-color: #e1764e; background: #fff4e9; box-shadow: 0 3px 0 #f1d5bb; }
+.difficulty-option.is-locked { color: #8d91a0; background: #f2f1ee; }
+.difficulty-option:disabled { cursor: not-allowed; }
+.difficulty-option:focus-visible { outline: 3px solid #e5a33c; outline-offset: 2px; }
+.difficulty-icon { font-size: 21px; line-height: 1.1; }
+.difficulty-label { color: #34415a; font-size: 13px; font-weight: 900; }
+.difficulty-state { font-size: 11px; }
+.difficulty-hint { margin: 9px 0 0; color: #788196; font-size: 12px; line-height: 1.4; }
+
 .start-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -157,5 +235,10 @@ const emit = defineEmits(['start', 'topic-change', 'register', 'logout', 'login-
 .register-link {
   display: block;
   margin-top: 20px;
+}
+
+@media (max-width: 700px) {
+  .difficulty-options { gap: 6px; }
+  .difficulty-option { min-height: 82px; }
 }
 </style>

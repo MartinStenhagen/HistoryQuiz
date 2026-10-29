@@ -2,12 +2,14 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, RouterView, useRouter } from 'vue-router'
 import AchievementUnlockNotice from './components/AchievementUnlockNotice.vue'
+import LevelUnlockNotice from './components/LevelUnlockNotice.vue'
 import AnswerFeedback from './components/AnswerFeedback.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
 import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
 import StartScreen from './components/StartScreen.vue'
 import { useAchievementsStore } from './stores/achievements.js'
+import { useDifficultyProgressStore } from './stores/difficultyProgress.js'
 import { storeToRefs } from 'pinia'
 import { useAuthStore } from './stores/auth'
 import { api } from './api'
@@ -85,6 +87,7 @@ async function submitAnswer(questionId, selectedOptionId) {
 }
 
 const achievementsStore = useAchievementsStore()
+const difficultyProgressStore = useDifficultyProgressStore()
 const screen = ref('home')
 const questions = ref([])
 const questionIndex = ref(0)
@@ -98,11 +101,17 @@ const selectedTopicId = ref(null)
 const topicsLoading = ref(false)
 const topicsError = ref('')
 const achievementNotices = ref([])
+const selectedDifficulty = ref(1)
+const levelUnlockNotice = ref(null)
 let nextNoticeId = 0
 
 watch(() => auth.version, () => {
   achievementNotices.value = []
 }, { flush: 'sync' })
+
+const unlockedDifficulties = computed(() =>
+  difficultyProgressStore.unlockedLevels(selectedTopicId.value)
+)
 
 function dismissAchievementNotice(noticeId) {
   achievementNotices.value = achievementNotices.value.filter(
@@ -126,6 +135,16 @@ async function handleLogout() {
 
 function retryAnswer() {
   if (pendingAnswer.value) void chooseAnswer(pendingAnswer.value.selectedOptionId)
+}
+
+function dismissLevelUnlockNotice() {
+  levelUnlockNotice.value = null
+}
+
+function changeTopic(topicId) {
+  selectedTopicId.value = topicId
+  const levelsForTopic = difficultyProgressStore.unlockedLevels(topicId)
+  selectedDifficulty.value = Math.max(...levelsForTopic)
 }
 
 async function loadTopics() {
@@ -173,6 +192,7 @@ function goHome() {
   errorMessage.value = ''
   achievementNotices.value = []
   void router.push('/')
+  levelUnlockNotice.value = null
 }
 
 async function startQuiz() {
@@ -185,19 +205,25 @@ async function startQuiz() {
     return
   }
 
+  if (!difficultyProgressStore.isUnlocked(selectedTopic.id, selectedDifficulty.value)) {
+    errorMessage.value = 'Den här nivån är låst. Klara föregående nivå först.'
+    return
+  }
+
   goHome()
   loading.value = true
 
   try {
     const params = new URLSearchParams({
       topicId: String(selectedTopic.id),
+      difficulty: String(selectedDifficulty.value),
       limit: '5',
     })
 
     const data = await api(`/api/questions?${params}`)
 
     if (data.questions.length === 0) {
-      errorMessage.value = 'Det finns inga spelbara frågor för det valda ämnet.'
+      errorMessage.value = `Det finns inga spelbara frågor på nivå ${selectedDifficulty.value} i den valda kategorin ännu.`
       return
     }
 
@@ -241,6 +267,25 @@ async function chooseAnswer(optionId) {
 
     if (result.isCorrect) {
       score.value += 1
+    }
+
+    const isLastQuestion = questionIndex.value === questions.value.length - 1
+
+    if (isLastQuestion && score.value === questions.value.length) {
+      const unlockedDifficulty = difficultyProgressStore.unlockNextLevel(
+        selectedTopicId.value,
+        selectedDifficulty.value
+      )
+
+      if (unlockedDifficulty) {
+        const selectedTopic = topics.value.find(
+          (topic) => topic.id === selectedTopicId.value
+        )
+        levelUnlockNotice.value = {
+          categoryName: selectedTopic?.name ?? 'kategorin',
+          difficulty: unlockedDifficulty,
+        }
+      }
     }
 
     screen.value = 'feedback'
@@ -317,6 +362,17 @@ function nextStep() {
         @dismiss="dismissAchievementNotice(notice.id)"
       />
     </aside>
+    <aside
+      v-if="levelUnlockNotice && $route.name === 'home' && screen === 'feedback'"
+      class="level-unlock-notice"
+      aria-label="Ny nivå upplåst"
+    >
+      <LevelUnlockNotice
+        :category-name="levelUnlockNotice.categoryName"
+        :difficulty="levelUnlockNotice.difficulty"
+        @dismiss="dismissLevelUnlockNotice"
+      />
+    </aside>
     <main>
       <RouterView v-if="['teacher-statistics', 'achievements'].includes($route.name)" />
       <template v-else>
@@ -350,9 +406,12 @@ function nextStep() {
             v-if="screen === 'home'"
             :topics="topics"
             :selected-topic-id="selectedTopicId"
+            :selected-difficulty="selectedDifficulty"
+            :unlocked-difficulties="unlockedDifficulties"
             :is-authenticated="isAuthenticated"
             :current-user="currentUser"
-            @topic-change="selectedTopicId = $event"
+            @topic-change="changeTopic"
+            @difficulty-change="selectedDifficulty = $event"
             @start="startQuiz"
             @login-success="goHome"
             :account-busy="auth.busy"
@@ -428,6 +487,16 @@ function nextStep() {
 
 .achievement-notices > * { pointer-events: auto; }
 
+.level-unlock-notice {
+  position: fixed;
+  z-index: 21;
+  top: 258px;
+  right: max(24px, calc((100vw - 1120px) / 2));
+  pointer-events: none;
+}
+
+.level-unlock-notice > * { pointer-events: auto; }
+
 .top-navigation {
   display: flex;
   align-items: center;
@@ -454,6 +523,14 @@ function nextStep() {
     top: 78px;
     right: 12px;
     left: 12px;
+    justify-items: center;
+  }
+
+  .level-unlock-notice {
+    top: 240px;
+    right: 12px;
+    left: 12px;
+    display: grid;
     justify-items: center;
   }
 
