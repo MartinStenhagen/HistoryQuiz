@@ -288,8 +288,9 @@ COMMIT;
 -- Tillägget kan köras igen: befintliga frågekoder, alternativ och regler
 -- skrivs inte över. Tidigare block i den här filen är inte återkörbara.
 -- Kör hela tillägget i samma anslutning; avbryt och gör ROLLBACK vid fel.
--- De vanliga frågorna publiceras. Utmaningen skapas inaktiv och dess
--- frågor som utkast tills steg 3 och filtren för vanliga quiz är införda.
+-- De vanliga frågorna publiceras. Utmaningen skapas först inaktiv och dess
+-- frågor som utkast. Aktiveringsblocket längst ned publicerar och aktiverar
+-- dem när endpoints och filtren för vanliga quiz är införda.
 -- Historiskt underlag:
 -- https://www.worldhistory.org/Roman_Republic/
 -- https://www.metmuseum.org/de/perspectives/mary-beard-silver-caesars-1
@@ -608,5 +609,26 @@ WHERE NOT EXISTS (
     WHERE challenge_id = @caesar_challenge_id
         AND question_id = @caesar_question_id
 );
+
+COMMIT;
+
+-- Aktivering av Caesars utmaning (steg 5).
+-- Kräver tillägget ovan samt endpoints och filtren för question_kind.
+-- Kan köras igen utan att ändra redan publicerade frågors publiceringsdatum.
+
+START TRANSACTION;
+
+UPDATE questions AS q
+JOIN challenge_questions AS cq ON cq.question_id = q.id
+JOIN challenges AS c ON c.id = cq.challenge_id
+SET q.status = 'published',
+    q.published_at = UTC_TIMESTAMP(6)
+WHERE c.code = 'CAESAR_CHALLENGE'
+    AND q.question_kind = 'challenge'
+    AND q.status = 'draft';
+
+UPDATE challenges
+SET is_active = 1
+WHERE code = 'CAESAR_CHALLENGE';
 
 COMMIT;
