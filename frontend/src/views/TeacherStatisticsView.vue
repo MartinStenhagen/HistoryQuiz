@@ -1,7 +1,8 @@
 <script setup>
 import { computed,ref, onMounted } from 'vue'
+import teacherUserRegistration from '@/components/teacherUserRegistration.vue'
 
-
+const isFormVisible = ref(false);
 function accuracyClass(value) {
   if (value >= 80) return 'accuracy-high'
   if (value >= 65) return 'accuracy-medium'
@@ -129,6 +130,10 @@ async function getStudents() {
         </table>
       </div>
     </section>
+    <section>
+        <button @click="isFormVisible = true" v-if="!isFormVisible">Lägg till konto</button>
+        <teacherUserRegistration v-if="isFormVisible" />
+      </section>
   </section>
 </template>
 
