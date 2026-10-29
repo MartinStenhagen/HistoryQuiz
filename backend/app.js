@@ -40,6 +40,7 @@ app.use('/api', (req, res, next) => {
 app.use(sessionMiddleware);
 
 const authRoutes = require('./routes/authRoutes');
+const teacherRoutes = require('./routes/teacherRoutes');
 
 const questionRoutes = require('./routes/questionRoutes');
 app.use('/api/questions', questionRoutes);
@@ -48,6 +49,7 @@ const topicRoutes = require('./routes/topicRoutes');
 app.use('/api/topics', topicRoutes);
 
 app.use(authRoutes);
+app.use(teacherRoutes);
 
 const achievementRoutes = require('./routes/achievementRoutes');
 app.use('/api/me/achievements', achievementRoutes);

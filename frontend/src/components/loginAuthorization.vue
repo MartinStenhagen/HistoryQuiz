@@ -33,7 +33,7 @@ async function handleLogin() {
           :disabled="disabled || auth.busy"
           required
         />
-      </label>
+      </label><br>
       <label class="login_label">
         Lösenord
         <input
@@ -44,7 +44,7 @@ async function handleLogin() {
           :disabled="disabled || auth.busy"
           required
         />
-      </label>
+      </label><br>
       <button class="login_btn" type="submit" :disabled="disabled || auth.busy">
         {{ auth.busy ? 'Loggar in…' : 'Logga in' }}
       </button>
