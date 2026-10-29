@@ -35,12 +35,27 @@ async function readProgress(connection, userId) {
       currentStreak,
       bestStreak,
     };
+  
+    const [challengeRows] = await connection.execute(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM challenge_runs AS r
+      JOIN challenges AS c ON c.id = r.challenge_id
+      WHERE r.user_id = ?
+        AND c.code = ?
+        AND r.status = 'passed'
+    ) AS completed
+    `,
+    [userId, 'CAESAR_CHALLENGE']
+    );  
 
   const progressByMetric = {
     total_answers: statistics.totalAnswers,
     total_correct: statistics.totalCorrect,
     unique_answers_correct: statistics.uniqueCorrect,
     correct_streak: statistics.bestStreak,
+    caesar_challenge_completed: Number(challengeRows[0].completed),
   };
 
   const [definitions] = await connection.execute(

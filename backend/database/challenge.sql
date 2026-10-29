@@ -148,3 +148,54 @@ ALTER TABLE answer_attempts
         FOREIGN KEY (challenge_run_id, question_id)
         REFERENCES challenge_run_questions (challenge_run_id, question_id)
         ON DELETE RESTRICT;
+
+USE historyQuizDb;
+
+ALTER TABLE achievements
+MODIFY COLUMN metric ENUM(
+    'total_answers',
+    'total_correct',
+    'correct_streak',
+    'unique_answers_correct',
+    'caesar_challenge_completed'
+) NOT NULL;
+
+INSERT INTO achievements (
+    code,
+    name,
+    description,
+    metric,
+    target_value,
+    is_active
+)
+VALUES (
+    'HISTORICAL_CHALLENGER',
+    'Caesars utmanare',
+    'Klara Caesars utmaning.',
+    'caesar_challenge_completed',
+    1,
+    0
+); 
+
+START TRANSACTION;
+
+UPDATE achievements
+SET is_active = 1
+WHERE code = 'HISTORICAL_CHALLENGER';
+
+INSERT INTO user_achievements (user_id, achievement_id)
+SELECT DISTINCT
+    r.user_id,
+    a.id
+FROM challenge_runs AS r
+JOIN challenges AS c
+    ON c.id = r.challenge_id
+JOIN achievements AS a
+    ON a.code = 'HISTORICAL_CHALLENGER'
+    AND a.metric = 'caesar_challenge_completed'
+    AND a.is_active = 1
+WHERE c.code = 'CAESAR_CHALLENGE'
+    AND r.status = 'passed'
+ON DUPLICATE KEY UPDATE awarded_at = awarded_at;
+
+COMMIT;
