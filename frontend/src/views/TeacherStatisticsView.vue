@@ -1,57 +1,23 @@
 <script setup>
 import { computed,ref, onMounted } from 'vue'
+import teacherUserRegistration from '@/components/teacherUserRegistration.vue'
+import studentStatsOverview from '@/components/studentStatsOverview.vue';
 
+const currentTab = ref('students')
 
-function accuracyClass(value) {
-  if (value >= 80) return 'accuracy-high'
-  if (value >= 65) return 'accuracy-medium'
-  return 'accuracy-low'
+const tabs = {
+  students: studentStatsOverview,
+  registration: teacherUserRegistration
 }
 
-const students = ref([]);
-const totalAnswers = computed(() => {
-  return students.value.reduce((sum, student) => sum + Number(student.total_answers || 0), 0);
-}); 
-
-const totalCorrect = computed(() => {
-  return students.value.reduce((sum, student) => sum + Number(student.total_correct || 0), 0);
+const activeComponent = computed(() => {
+  return tabs[currentTab.value] || null
 })
 
-const totalCorrectPercent = computed(() => {
-  const totals = students.value.reduce(
-    (acc, student) => {
-      acc.correct += Number(student.total_correct || 0);
-      acc.wrong += Number(student.total_wrong || 0);
-      return acc;
-    },
-    { correct: 0, wrong: 0 }
-  );
+function selectTab(tabKey) {
+  currentTab.value = tabKey
+}
 
-  const totalAnswers = totals.correct + totals.wrong;
-  if (totalAnswers === 0) return 0;
-
-  return Number(((totals.correct / totalAnswers) * 100).toFixed(1));
-});
-
-const errorMessage = ref('');
-    
-async function getStudents() {
-          try {
-            const response = await fetch('/api/getstudents');
-            const data = await response.json();
-        
-            if (!response.ok) throw new Error(data.error);
-
-            students.value = data;
-            } catch (err) {
-                errorMessage.value = err.message;
-            }
-    }
-
-
-    onMounted(() => {
-        getStudents();
-    });
 </script>
 
 <template>
@@ -59,76 +25,18 @@ async function getStudents() {
     <header class="dashboard-heading">
       <div>
         <p class="dashboard-eyebrow"><span aria-hidden="true">✦</span> Läraröversikt</p>
-        <h1 id="teacher-title">Elevernas framsteg</h1>
-        <p class="dashboard-intro">En snabb överblick över hur det går med historiefrågorna.</p>
       </div>
-      <span class="demo-label"><span aria-hidden="true">●</span>Elevestatistik</span>
     </header>
-
-    <div class="summary-grid" aria-label="Sammanfattning">
-      <article class="summary-card students-card">
-        <span class="summary-icon" aria-hidden="true">👩‍🎓</span>
-        <div><p>Elever</p><strong>{{ students.length }}</strong></div>
-      </article>
-      <article class="summary-card answers-card">
-        <span class="summary-icon" aria-hidden="true">📝</span>
-        <div><p>Besvarade frågor</p><strong>{{ totalAnswers }}</strong></div>
-      </article>
-      <article class="summary-card accuracy-card">
-        <span class="summary-icon" aria-hidden="true">🌟</span>
-        <div><p>Rätt svar totalt</p><strong>{{ totalCorrect }} <small>{{ totalCorrectPercent }}(%)</small></strong></div>
-      </article>
-    </div>
-
-    <section class="students-panel" aria-labelledby="students-title">
-      <div class="table-heading">
-        <div>
-          <h2 id="students-title">Resultat per elev</h2>
-          <p>Andel rätt visas med både färg och procent.</p>
-        </div>
-        <span class="student-count">{{ students.length }} elever</span>
-      </div>
-
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Elev</th>
-              <th scope="col">Besvarade</th>
-              <th scope="col">Rätt</th>
-              <th scope="col">Fel</th>
-              <th scope="col">Andel rätt</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="student in students" :key="student.id">
-              <th scope="row" class="student-name">
-                <span class="student-avatar" aria-hidden="true">{{ student.username.charAt(0) }}</span>
-                {{ student.username }}
-              </th>
-              <td>{{ student.total_answers }}</td>
-              <td class="number-correct">{{ student.total_correct }}</td>
-              <td class="number-wrong">{{ student.total_wrong }}</td>
-              <td>
-                <div class="accuracy-cell">
-                  <div
-                    class="accuracy-track"
-                    role="progressbar"
-                    :aria-label="`Andel rätt för ${student.name}`"
-                    :aria-valuenow="student.accuracy_percent"
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                  >
-                    <span :class="accuracyClass(student.accuracy_percent)" :style="{ width: `${student.accuracy_percent}%` }"></span>
-                  </div>
-                  <strong>{{ student.accuracy_percent }}%</strong>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <nav class="teacherLinks">
+        <h3 class="formButton" :class="{ active: currentTab === 'students'}" @click="selectTab('students')">Visa elever</h3>
+        <h3 class="formButton" :class="{ active: currentTab === 'registration'}" @click="selectTab('registration')">Lägg till konto</h3>
+    </nav>
+    <main>
+      <KeepAlive>
+        <component :is="activeComponent" @registration-success="handleRegistrationSuccess"></component>
+        
+      </KeepAlive>
+    </main>
   </section>
 </template>
 
@@ -137,6 +45,22 @@ async function getStudents() {
   width: min(100%, 1000px);
   align-self: start;
   padding: 8px 0 22px;
+}
+
+.teacherLinks{
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.formButton{
+  border-radius: 999px;
+  padding: 9px 13px;
+  color: #526078;
+  border-color: #c86b49;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .dashboard-heading,
