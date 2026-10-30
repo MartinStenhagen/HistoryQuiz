@@ -4,6 +4,7 @@ import { RouterLink, RouterView, useRouter } from 'vue-router'
 import AchievementUnlockNotice from './components/AchievementUnlockNotice.vue'
 import LevelUnlockNotice from './components/LevelUnlockNotice.vue'
 import AnswerFeedback from './components/AnswerFeedback.vue'
+import CaesarCharacter from './components/CaesarCharacter.vue'
 import QuizQuestion from './components/QuizQuestion.vue'
 import RegisterUser from './components/RegisterUser.vue'
 import ResultScreen from './components/ResultScreen.vue'
@@ -115,6 +116,14 @@ const questionIndex = ref(0)
 const selectedAnswer = ref(null)
 const score = ref(0)
 const isCorrect = ref(false)
+const caesarReaction = computed(() => {
+  if (!isChallenge.value) return 'idle'
+  if (screen.value === 'feedback') return isCorrect.value ? 'correct' : 'incorrect'
+  if (screen.value === 'result') {
+    return challengeRun.value?.status === 'passed' ? 'correct' : 'incorrect'
+  }
+  return 'idle'
+})
 const loading = ref(false)
 const loadingMessage = ref('')
 const errorMessage = ref('')
@@ -660,44 +669,57 @@ function nextStep() {
           @busy-change="loading = $event"
           @home="goHome"
         />
-        <template v-else-if="screen === 'quiz'">
-          <QuizQuestion
-            :question="currentQuestion"
-            :question-number="questionIndex + 1"
-            :total-questions="questions.length"
-            :disabled="loading || !authReady || auth.busy || needsLogin || pendingAnswer !== null"
-            @answer="chooseAnswer"
-            @home="goHome"
+        <div
+          v-else-if="['quiz', 'feedback', 'result'].includes(screen)"
+          class="game-layout"
+          :class="{ 'has-character': isChallenge && challengeRun?.characterKey === 'caesar' }"
+        >
+          <CaesarCharacter
+            v-if="isChallenge && challengeRun?.characterKey === 'caesar'"
+            :state="caesarReaction"
+            :reaction-key="`${challengeRun.runId}:${screen}:${currentQuestion?.id ?? ''}`"
           />
-          <div v-if="pendingAnswer && !loading && !needsLogin" class="answer-retry">
-            <button
-              class="button button-primary"
-              :disabled="!authReady || auth.busy"
-              @click="retryAnswer"
-            >
-              Försök igen med samma svar
-            </button>
+          <div class="game-content">
+            <template v-if="screen === 'quiz'">
+              <QuizQuestion
+                :question="currentQuestion"
+                :question-number="questionIndex + 1"
+                :total-questions="questions.length"
+                :disabled="loading || !authReady || auth.busy || needsLogin || pendingAnswer !== null"
+                @answer="chooseAnswer"
+                @home="goHome"
+              />
+              <div v-if="pendingAnswer && !loading && !needsLogin" class="answer-retry">
+                <button
+                  class="button button-primary"
+                  :disabled="!authReady || auth.busy"
+                  @click="retryAnswer"
+                >
+                  Försök igen med samma svar
+                </button>
+              </div>
+            </template>
+            <AnswerFeedback
+              v-else-if="screen === 'feedback'"
+              :question="currentQuestion"
+              :question-number="questionIndex + 1"
+              :total-questions="questions.length"
+              :is-correct="isCorrect"
+              :disabled="loading || auth.busy"
+              @next="nextStep"
+              @home="goHome"
+            />
+            <ResultScreen
+              v-else-if="screen === 'result'"
+              :score="score"
+              :total-questions="questions.length"
+              :challenge="isChallenge ? challengeRun : null"
+              :disabled="loading || auth.busy || (isChallenge && needsLogin)"
+              @restart="restartQuiz"
+              @home="goHome"
+            />
           </div>
-        </template>
-        <AnswerFeedback
-          v-else-if="screen === 'feedback'"
-          :question="currentQuestion"
-          :question-number="questionIndex + 1"
-          :total-questions="questions.length"
-          :is-correct="isCorrect"
-          :disabled="loading || auth.busy"
-          @next="nextStep"
-          @home="goHome"
-        />
-        <ResultScreen
-          v-else-if="screen === 'result'"
-          :score="score"
-          :total-questions="questions.length"
-          :challenge="isChallenge ? challengeRun : null"
-          :disabled="loading || auth.busy || (isChallenge && needsLogin)"
-          @restart="restartQuiz"
-          @home="goHome"
-        />
+        </div>
         <section
           v-if="canShowChallengeOffer"
           class="challenge-offer panel"
@@ -762,6 +784,44 @@ function nextStep() {
 
 <style scoped>
 .challenge-active { align-content: center; }
+
+.game-layout { width: min(100%, 880px); }
+.game-content { min-width: 0; display: grid; justify-items: center; }
+
+@media (min-width: 768px) {
+  .game-layout.has-character {
+    width: min(100%, 1180px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(220px, 27vw, 320px);
+    align-items: center;
+    gap: clamp(16px, 2vw, 32px);
+  }
+
+  .has-character > .game-content { grid-area: 1 / 1; }
+  .has-character > .challenge-character {
+    grid-area: 1 / 2;
+    flex-direction: column;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    text-align: center;
+  }
+
+  .has-character :deep(.caesar-portrait) {
+    width: 100%;
+    max-width: 300px;
+    aspect-ratio: 3 / 4;
+  }
+
+  /* De breda transparenta kanterna får mindre plats; hela figuren syns. */
+  .has-character :deep(.caesar-frame) { object-fit: cover; }
+  .has-character :deep(.caesar-copy) { max-width: 100%; }
+  .has-character :deep(.quiz-panel),
+  .has-character :deep(.feedback-panel) {
+    padding: clamp(24px, 3.5vw, 48px);
+  }
+}
 
 .challenge-offer {
   margin-top: 24px;
