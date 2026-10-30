@@ -26,10 +26,19 @@ onMounted(() => {
 })
 
 const pendingAnswer = ref(null)
+const pendingChallengeStart = ref(null)
+const gameMode = ref('regular')
+const challengeRun = ref(null)
+const isChallenge = computed(() => gameMode.value === 'challenge')
+const requiredAccountId = computed(() =>
+  pendingAnswer.value?.accountId ??
+  pendingChallengeStart.value?.accountId ??
+  (isChallenge.value ? challengeRun.value?.accountId : null)
+)
 const needsLogin = computed(
   () =>
-    pendingAnswer.value?.accountId != null &&
-    (!auth.isAuthenticated || pendingAnswer.value.accountId !== auth.user?.id),
+    requiredAccountId.value != null &&
+    (!auth.isAuthenticated || requiredAccountId.value !== auth.user?.id),
 )
 
 async function submitAnswer(questionId, selectedOptionId) {
@@ -42,13 +51,18 @@ async function submitAnswer(questionId, selectedOptionId) {
       questionId,
       selectedOptionId,
       requestKey: crypto.randomUUID(),
-      accountId: auth.user?.id ?? null,
+      accountId: isChallenge.value ? challengeRun.value.accountId : auth.user?.id ?? null,
+      runId: isChallenge.value ? challengeRun.value.runId : null,
     }
   }
 
   const attempt = pendingAnswer.value
 
-  if (attempt.questionId !== questionId || attempt.selectedOptionId !== selectedOptionId) {
+  if (
+    attempt.questionId !== questionId ||
+    attempt.selectedOptionId !== selectedOptionId ||
+    attempt.runId !== (isChallenge.value ? challengeRun.value.runId : null)
+  ) {
     throw new Error('Det tidigare försöket behöver skickas om med samma svar.')
   }
 
@@ -57,13 +71,20 @@ async function submitAnswer(questionId, selectedOptionId) {
   }
 
   const startedAtVersion = auth.version
-  const endpoint = attempt.accountId === null ? 'check' : 'answer'
+  const endpoint = attempt.runId === null
+    ? `/api/questions/${attempt.questionId}/${attempt.accountId === null ? 'check' : 'answer'}`
+    : `/api/challenges/runs/${attempt.runId}/answers`
 
   try {
-    const result = await api(`/api/questions/${attempt.questionId}/${endpoint}`, {
+    // En ny inloggning nollställer utmärkelsernas baslinje, även mitt i en omgång.
+    if (attempt.runId !== null && achievementsStore.statistics === null) {
+      await prepareAchievementBaseline(startedAtVersion)
+    }
+    const result = await api(endpoint, {
       method: 'POST',
       accountId: attempt.accountId,
       body: {
+        ...(attempt.runId !== null ? { questionId: attempt.questionId } : {}),
         selectedOptionId: attempt.selectedOptionId,
         requestKey: attempt.requestKey,
       },
@@ -95,6 +116,7 @@ const selectedAnswer = ref(null)
 const score = ref(0)
 const isCorrect = ref(false)
 const loading = ref(false)
+const loadingMessage = ref('')
 const errorMessage = ref('')
 const topics = ref([])
 const selectedTopicId = ref(null)
@@ -103,11 +125,60 @@ const topicsError = ref('')
 const achievementNotices = ref([])
 const selectedDifficulty = ref(1)
 const levelUnlockNotice = ref(null)
+const challengeStatus = ref(null)
+const challengeStatusLoading = ref(false)
+const challengeStatusError = ref('')
 let nextNoticeId = 0
+let challengeStatusRequest = 0
 
 watch(() => auth.version, () => {
   achievementNotices.value = []
+  challengeStatus.value = null
+  challengeStatusError.value = ''
+  challengeStatusLoading.value = false
+  challengeStatusRequest += 1
+  if (auth.isAuthenticated) void loadChallengeStatus()
 }, { flush: 'sync' })
+
+const canShowChallengeOffer = computed(() =>
+  auth.isAuthenticated &&
+  (screen.value === 'home' || (screen.value === 'result' && !isChallenge.value)) &&
+  challengeStatus.value?.challenge.isActive &&
+  challengeStatus.value.challenge.topicId === selectedTopicId.value &&
+  (challengeStatus.value.available ||
+    selectedDifficulty.value === challengeStatus.value.challenge.requiredDifficulty)
+)
+
+async function loadChallengeStatus() {
+  if (!auth.isAuthenticated) return
+
+  const request = ++challengeStatusRequest
+  const accountVersion = auth.version
+  const accountId = auth.user.id
+  const isCurrent = () => request === challengeStatusRequest && auth.version === accountVersion
+  challengeStatusLoading.value = true
+  challengeStatusError.value = ''
+
+  try {
+    const data = await api('/api/challenges/caesar/status', { accountId })
+    if (!isCurrent()) return
+    if (data.userId !== accountId) {
+      auth.expire()
+      return
+    }
+    challengeStatus.value = data
+  } catch (error) {
+    if (!isCurrent()) return
+    challengeStatus.value = null
+    if (error.status === 401 || error.code === 'ACCOUNT_CHANGED') {
+      auth.expire()
+    } else if (error.status !== 404) {
+      challengeStatusError.value = 'Kunde inte kontrollera utmaningen. Försök igen.'
+    }
+  } finally {
+    if (isCurrent()) challengeStatusLoading.value = false
+  }
+}
 
 const unlockedDifficulties = computed(() =>
   difficultyProgressStore.unlockedLevels(selectedTopicId.value)
@@ -117,6 +188,103 @@ function dismissAchievementNotice(noticeId) {
   achievementNotices.value = achievementNotices.value.filter(
     (notice) => notice.id !== noticeId
   )
+}
+
+async function refreshAchievementNotices(accountVersion) {
+  if (!auth.isAuthenticated || auth.version !== accountVersion) return
+
+  const newlyUnlocked = await achievementsStore.load()
+
+  if (auth.version !== accountVersion) return
+
+  const queuedCodes = new Set(
+    achievementNotices.value.map(notice => notice.achievement.code)
+  )
+
+  for (const achievement of newlyUnlocked) {
+    if (queuedCodes.has(achievement.code)) continue
+
+    achievementNotices.value.push({
+      id: nextNoticeId++,
+      achievement,
+    })
+
+    queuedCodes.add(achievement.code)
+  }
+}
+
+async function prepareAchievementBaseline(accountVersion) {
+  await achievementsStore.load()
+  if (auth.version !== accountVersion || !auth.isAuthenticated) {
+    throw new Error('Inloggningen ändrades. Logga in på samma konto och försök igen.')
+  }
+  if (achievementsStore.error || achievementsStore.loading || achievementsStore.statistics === null) {
+    throw new Error('Kunde inte hämta dina utmärkelser. Försök igen.')
+  }
+}
+
+async function startChallenge() {
+  if (loading.value || auth.busy || !authReady.value) return
+  if (!auth.isAuthenticated || needsLogin.value) {
+    errorMessage.value = 'Logga in på samma konto för att starta utmaningen.'
+    return
+  }
+  if (!pendingChallengeStart.value && !challengeStatus.value?.available) {
+    errorMessage.value = 'Utmaningen är inte tillgänglig ännu.'
+    return
+  }
+
+  pendingChallengeStart.value ??= {
+    accountId: auth.user.id,
+    requestKey: crypto.randomUUID(),
+  }
+  const attempt = pendingChallengeStart.value
+  const accountVersion = auth.version
+  loading.value = true
+  loadingMessage.value = 'Startar utmaningen…'
+  errorMessage.value = ''
+
+  try {
+    await prepareAchievementBaseline(accountVersion)
+    const run = await api('/api/challenges/caesar/runs', {
+      method: 'POST',
+      accountId: attempt.accountId,
+      body: { requestKey: attempt.requestKey },
+    })
+    if (auth.version !== accountVersion) {
+      throw new Error('Inloggningen ändrades under anropet.')
+    }
+
+    const nextIndex = run.questions.findIndex(question => question.id === run.nextQuestionId)
+    if (run.status === 'in_progress' && nextIndex < 0) {
+      throw new Error('Kunde inte hitta nästa utmaningsfråga. Försök starta igen.')
+    }
+    questions.value = run.questions.map(question => ({
+      id: question.id,
+      question: question.questionText,
+      answers: question.options,
+    }))
+    challengeRun.value = { ...run, accountId: attempt.accountId }
+    gameMode.value = 'challenge'
+    questionIndex.value = Math.max(0, nextIndex)
+    score.value = run.correctCount
+    selectedAnswer.value = null
+    pendingAnswer.value = null
+    isCorrect.value = false
+    levelUnlockNotice.value = null
+    pendingChallengeStart.value = null
+    screen.value = run.status === 'in_progress' ? 'quiz' : 'result'
+  } catch (error) {
+    if (
+      (error.status === 401 || error.code === 'ACCOUNT_CHANGED') &&
+      auth.version === accountVersion
+    ) {
+      auth.expire()
+    }
+    errorMessage.value = error.message || 'Kunde inte starta utmaningen. Försök igen.'
+  } finally {
+    loading.value = false
+  }
 }
 
 const currentQuestion = computed(() => questions.value[questionIndex.value])
@@ -135,6 +303,16 @@ async function handleLogout() {
 
 function retryAnswer() {
   if (pendingAnswer.value) void chooseAnswer(pendingAnswer.value.selectedOptionId)
+}
+
+function resumePendingAction() {
+  if (pendingAnswer.value) retryAnswer()
+  else if (pendingChallengeStart.value) void startChallenge()
+}
+
+function restartQuiz() {
+  if (isChallenge.value) void startChallenge()
+  else void startQuiz()
 }
 
 function dismissLevelUnlockNotice() {
@@ -187,12 +365,16 @@ function goHome() {
   questionIndex.value = 0
   selectedAnswer.value = null
   pendingAnswer.value = null
+  pendingChallengeStart.value = null
+  gameMode.value = 'regular'
+  challengeRun.value = null
   score.value = 0
   isCorrect.value = false
   errorMessage.value = ''
   achievementNotices.value = []
   void router.push('/')
   levelUnlockNotice.value = null
+  if (auth.isAuthenticated) void loadChallengeStatus()
 }
 
 async function startQuiz() {
@@ -212,6 +394,8 @@ async function startQuiz() {
 
   goHome()
   loading.value = true
+  loadingMessage.value = 'Hämtar frågor…'
+  const accountVersion = auth.version
 
   try {
     const params = new URLSearchParams({
@@ -235,6 +419,9 @@ async function startQuiz() {
 
     // Läs befintliga utmärkelser före första svaret så att gamla inte firas igen.
     if (auth.isAuthenticated) await achievementsStore.load()
+    if (auth.version !== accountVersion) {
+      throw new Error('Inloggningen ändrades under anropet.')
+    }
     screen.value = 'quiz'
   } catch (error) {
     console.error(error)
@@ -245,13 +432,18 @@ async function startQuiz() {
 }
 
 async function chooseAnswer(optionId) {
-  if (loading.value || selectedAnswer.value !== null || screen.value !== 'quiz') {
+  if (
+    loading.value || auth.busy || !authReady.value || needsLogin.value ||
+    selectedAnswer.value !== null || screen.value !== 'quiz'
+  ) {
     return
   }
 
   const question = currentQuestion.value
   loading.value = true
+  loadingMessage.value = 'Rättar svaret…'
   errorMessage.value = ''
+  const accountVersion = auth.version
 
   try {
     const result = await submitAnswer(question.id, optionId)
@@ -265,13 +457,16 @@ async function chooseAnswer(optionId) {
     selectedAnswer.value = optionId
     isCorrect.value = result.isCorrect
 
-    if (result.isCorrect) {
+    if (isChallenge.value) {
+      challengeRun.value = { ...challengeRun.value, ...result.run }
+      score.value = result.run.correctCount
+    } else if (result.isCorrect) {
       score.value += 1
     }
 
     const isLastQuestion = questionIndex.value === questions.value.length - 1
 
-    if (isLastQuestion && score.value === questions.value.length) {
+    if (!isChallenge.value && isLastQuestion && score.value === questions.value.length) {
       const unlockedDifficulty = difficultyProgressStore.unlockNextLevel(
         selectedTopicId.value,
         selectedDifficulty.value
@@ -290,15 +485,10 @@ async function chooseAnswer(optionId) {
 
     screen.value = 'feedback'
     if (result.saved) {
-      const accountVersion = auth.version
-      const newlyUnlocked = await achievementsStore.load()
-      if (auth.version === accountVersion) {
-        achievementNotices.value.push(
-          ...newlyUnlocked.map((achievement) => ({
-            id: nextNoticeId++,
-            achievement,
-          }))
-        )
+      loadingMessage.value = 'Uppdaterar framsteg…'
+      await refreshAchievementNotices(accountVersion)
+      if (!isChallenge.value && selectedDifficulty.value === 3 && isLastQuestion) {
+        await loadChallengeStatus()
       }
     }
   } catch (error) {
@@ -319,6 +509,23 @@ function nextStep() {
   pendingAnswer.value = null
   isCorrect.value = false
   errorMessage.value = ''
+
+  if (isChallenge.value) {
+    if (challengeRun.value.status !== 'in_progress') {
+      screen.value = 'result'
+      return
+    }
+    const nextIndex = questions.value.findIndex(
+      question => question.id === challengeRun.value.nextQuestionId
+    )
+    if (nextIndex < 0) {
+      errorMessage.value = 'Nästa fråga kunde inte hittas. Gå till startsidan och försök igen.'
+      return
+    }
+    questionIndex.value = nextIndex
+    screen.value = 'quiz'
+    return
+  }
 
   if (questionIndex.value >= questions.value.length - 1) {
     screen.value = 'result'
@@ -351,7 +558,7 @@ function nextStep() {
       </nav>
     </header>
     <aside
-      v-if="achievementNotices.length && $route.name === 'home' && ['quiz', 'feedback'].includes(screen)"
+      v-if="achievementNotices.length && $route.name === 'home' && ['quiz', 'feedback', 'result'].includes(screen)"
       class="achievement-notices"
       aria-label="Nya utmärkelser"
     >
@@ -373,7 +580,7 @@ function nextStep() {
         @dismiss="dismissLevelUnlockNotice"
       />
     </aside>
-    <main>
+    <main :class="{ 'challenge-active': isChallenge && $route.name === 'home' }">
       <RouterView v-if="['teacher-statistics', 'achievements'].includes($route.name)" />
       <template v-else>
         <p v-if="auth.status === 'checking'" role="status">Kontrollerar inloggningen…</p>
@@ -384,11 +591,39 @@ function nextStep() {
           </button>
         </div>
         <p v-if="$route.name !== 'achievements' && loading && screen !== 'register'" role="status">
-          {{ screen === 'quiz' ? 'Rättar svaret…' : 'Hämtar frågor…' }}
+          {{ loadingMessage }}
         </p>
 
         <p v-if="$route.name !== 'achievements' && errorMessage" role="alert">
           {{ errorMessage }}
+        </p>
+        <!-- Behåll formuläret tills login-success har hunnit skickas efter inloggningen. -->
+        <div v-if="requiredAccountId != null && !loading" v-show="needsLogin" class="answer-retry">
+          <p>Logga in på samma konto för att fortsätta med ditt försök.</p>
+          <LoginAuthorization @login-success="resumePendingAction" />
+        </div>
+        <div
+          v-if="achievementsStore.error && ['feedback', 'result'].includes(screen)"
+          class="achievement-retry"
+          role="alert"
+        >
+          <p>Svaret är sparat, men utmärkelserna kunde inte hämtas.</p>
+          <button
+            class="button button-secondary"
+            type="button"
+            :disabled="loading || achievementsStore.loading || !auth.isAuthenticated"
+            @click="refreshAchievementNotices(auth.version)"
+          >
+            Hämta utmärkelser igen
+          </button>
+        </div>
+        <p
+          v-if="isChallenge && ['quiz', 'feedback', 'result'].includes(screen)"
+          class="challenge-context"
+        >
+          <span aria-hidden="true">🏛️</span>
+          Utmaning med {{ challengeRun.characterName }} ·
+          Mål: {{ challengeRun.correctToPass }} av {{ challengeRun.questionCount }} rätt
         </p>
         <template v-if="screen === 'home'">
           <p v-if="topicsLoading" role="status">Hämtar ämnen…</p>
@@ -430,17 +665,12 @@ function nextStep() {
             :question="currentQuestion"
             :question-number="questionIndex + 1"
             :total-questions="questions.length"
-            :disabled="loading || !authReady || auth.busy || pendingAnswer !== null"
+            :disabled="loading || !authReady || auth.busy || needsLogin || pendingAnswer !== null"
             @answer="chooseAnswer"
             @home="goHome"
           />
-          <div v-if="pendingAnswer && !loading" class="answer-retry">
-            <div v-show="needsLogin">
-              <p>Logga in på samma konto för att fortsätta med det valda svaret.</p>
-              <LoginAuthorization @login-success="retryAnswer" />
-            </div>
+          <div v-if="pendingAnswer && !loading && !needsLogin" class="answer-retry">
             <button
-              v-if="!needsLogin"
               class="button button-primary"
               :disabled="!authReady || auth.busy"
               @click="retryAnswer"
@@ -455,16 +685,72 @@ function nextStep() {
           :question-number="questionIndex + 1"
           :total-questions="questions.length"
           :is-correct="isCorrect"
+          :disabled="loading || auth.busy"
           @next="nextStep"
           @home="goHome"
         />
         <ResultScreen
-          v-else
+          v-else-if="screen === 'result'"
           :score="score"
           :total-questions="questions.length"
-          @restart="startQuiz"
+          :challenge="isChallenge ? challengeRun : null"
+          :disabled="loading || auth.busy || (isChallenge && needsLogin)"
+          @restart="restartQuiz"
           @home="goHome"
         />
+        <section
+          v-if="canShowChallengeOffer"
+          class="challenge-offer panel"
+          aria-labelledby="challenge-offer-title"
+        >
+          <p class="eyebrow"><span aria-hidden="true">🏛️</span> Historisk utmaning</p>
+          <h2 id="challenge-offer-title">
+            {{ challengeStatus.available
+              ? `${challengeStatus.challenge.characterName} utmanar dig!`
+              : `Möt ${challengeStatus.challenge.characterName}` }}
+          </h2>
+          <p v-if="challengeStatus.available">
+            Du är redo! Svara rätt på minst
+            {{ challengeStatus.challenge.requiredCorrectToWin }} av
+            {{ challengeStatus.challenge.questionCount }} frågor för att klara utmaningen.
+          </p>
+          <p v-else>
+            Du har klarat {{ challengeStatus.qualification.correctQuestions }} av
+            {{ challengeStatus.qualification.requiredCorrectAnswers }} olika frågor på nivå
+            {{ challengeStatus.challenge.requiredDifficulty }} i den här kategorin.
+            Fortsätt samla rätta svar för att låsa upp utmaningen!
+          </p>
+          <button
+            v-if="challengeStatus.available && !pendingChallengeStart"
+            class="button button-primary"
+            type="button"
+            :disabled="loading || auth.busy || !authReady"
+            @click="startChallenge"
+          >
+            Starta utmaningen
+          </button>
+        </section>
+        <div v-if="pendingChallengeStart && !loading && !needsLogin" class="answer-retry">
+          <button
+            class="button button-primary"
+            type="button"
+            :disabled="auth.busy || !authReady"
+            @click="startChallenge"
+          >
+            Försök starta utmaningen igen
+          </button>
+        </div>
+        <template v-if="screen === 'home' || (screen === 'result' && !isChallenge)">
+          <p v-if="challengeStatusLoading && selectedTopicId && selectedDifficulty === 3" role="status">
+            Kontrollerar historiska utmaningar…
+          </p>
+          <div v-else-if="challengeStatusError && selectedTopicId && selectedDifficulty === 3" role="alert">
+            <p>{{ challengeStatusError }}</p>
+            <button class="button button-secondary" type="button" @click="loadChallengeStatus">
+              Kontrollera utmaningen igen
+            </button>
+          </div>
+        </template>
       </template>
     </main>
     <footer class="footer-note">
@@ -475,6 +761,21 @@ function nextStep() {
 </template>
 
 <style scoped>
+.challenge-active { align-content: center; }
+
+.challenge-offer {
+  margin-top: 24px;
+  padding: 24px 30px;
+  border-color: #e4c784;
+  background: #fff9e9;
+}
+
+.challenge-offer h2 { margin: 0; color: #34415a; }
+.challenge-offer p:not(.eyebrow) { color: #687188; line-height: 1.6; margin: 12px 0 20px; }
+.challenge-context { width: min(100%, 880px); margin: 0 0 16px; color: #687188; text-align: center; }
+.answer-retry, .achievement-retry { margin: 16px 0; text-align: center; }
+.button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
 .achievement-notices {
   position: fixed;
   z-index: 20;

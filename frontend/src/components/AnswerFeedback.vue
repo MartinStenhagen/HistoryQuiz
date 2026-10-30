@@ -4,6 +4,7 @@ defineProps({
   questionNumber: { type: Number, required: true },
   totalQuestions: { type: Number, required: true },
   isCorrect: { type: Boolean, required: true },
+  disabled: { type: Boolean, default: false },
 })
 
 defineEmits(['next', 'home'])
@@ -12,7 +13,7 @@ defineEmits(['next', 'home'])
 <template>
   <section class="feedback-panel panel" aria-labelledby="feedback-title">
     <div class="quiz-topline">
-      <button class="back-button" type="button" @click="$emit('home')">← Startsidan</button>
+      <button class="back-button" type="button" :disabled="disabled" @click="$emit('home')">← Startsidan</button>
       <span class="question-count">Fråga {{ questionNumber }} av {{ totalQuestions }}</span>
     </div>
     <div class="progress-track" aria-hidden="true">
@@ -34,7 +35,7 @@ defineEmits(['next', 'home'])
         Rätt svar: <strong>{{ question.correctAnswer }}</strong>
       </p>
       <p class="explanation">{{ question.explanation }}</p>
-      <button class="button button-primary" type="button" @click="$emit('next')">
+      <button class="button button-primary" type="button" :disabled="disabled" @click="$emit('next')">
         {{ questionNumber === totalQuestions ? 'Se resultat' : 'Nästa fråga' }}
         <span aria-hidden="true">→</span>
       </button>
