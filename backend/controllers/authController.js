@@ -2,7 +2,7 @@ const authService = require('../services/authService');
 
 exports.registerUser = async (req, res) => {
     try {
-        const { role, username, displayName, password } = req.body ?? {};
+        const { userId, role, username, displayName, password } = req.body ?? {};
 
         if (
             typeof username !== 'string' || !username.trim() ||
@@ -20,9 +20,9 @@ exports.registerUser = async (req, res) => {
             });
         }
 
-        // Rollen bestäms av backend, oavsett vad klienten skickar.
+        // Rollen bestäms av backend om användare är utloggad, annars så väljs det utav rollen lärare.
         const user = await authService.registerUser(
-            role, username.trim(), displayName.trim(), password
+            userId, role, username.trim(), displayName.trim(), password
         );
 
         return res.status(201).json({ message: 'Kontot är skapat.', user });
