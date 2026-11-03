@@ -27,8 +27,7 @@ async function getQuestions(limit, topicId = null, difficulty = null) {
             FROM questions
             JOIN answer_options
                 ON answer_options.question_id = questions.id
-            WHERE questions.status = ?
-                AND (? IS NULL OR questions.topic_id = ?)
+            WHERE (? IS NULL OR questions.topic_id = ?)
                 AND (? IS NULL OR questions.difficulty = ?)
                 AND questions.question_kind = 'regular'
             GROUP BY questions.id, questions.question_text
@@ -43,7 +42,6 @@ async function getQuestions(limit, topicId = null, difficulty = null) {
     `;
 
     const [rows] = await database.execute(sql, [
-        'published',
         topicId,
         topicId,
         difficulty,
@@ -84,12 +82,11 @@ async function answerQuestion(questionId, selectedOptionId, executor = database,
         JOIN answer_options AS o
             ON o.question_id = q.id
         WHERE q.id = ?
-            AND q.status = ?
             AND q.question_kind = ?
         ORDER BY o.sort_order
     `;
 
-    const [rows] = await executor.execute(sql, [questionId, 'published', kind]);
+    const [rows] = await executor.execute(sql, [questionId, kind]);
 
     // Samma krav som GET: fyra alternativ och exakt ett rätt.
     const correctOptions = rows.filter(

@@ -185,7 +185,7 @@ async function startRun({ userId, requestKey }) {
       JOIN questions AS q ON q.id = cq.question_id
       JOIN answer_options AS o ON o.question_id = q.id
       WHERE cq.challenge_id = ? AND q.topic_id = ?
-        AND q.question_kind = 'challenge' AND q.status = 'published'
+        AND q.question_kind = 'challenge'
       GROUP BY cq.question_id, cq.sort_order
       HAVING COUNT(*) = 4 AND SUM(o.is_correct) = 1
       ORDER BY cq.sort_order
