@@ -3,7 +3,7 @@ import { reactive, ref } from 'vue'
 import { api } from '../api'
 
 const emit = defineEmits(['home', 'busy-change'])
-const formData = reactive({ username: '', displayName: '', password: '' })
+const formData = reactive({role: null, username: '', displayName: '', password: '' })
 const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')

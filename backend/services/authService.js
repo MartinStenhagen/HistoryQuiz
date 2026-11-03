@@ -26,7 +26,7 @@ async function getUser(userN) {
     return rows.length > 0 ? rows[0] : null;
 }
 
-async function registerUser(userN, displayN, userPass) {
+async function registerUser(userR, userN, displayN, userPass) {
     // Slå upp standardrollen via dess kod i stället för att anta ett visst ID.
     const [roles] = await connectionMySQL.execute(
         'SELECT id FROM roles WHERE code = ?', ['student']
@@ -36,7 +36,8 @@ async function registerUser(userN, displayN, userPass) {
         throw new Error('Standardrollen student saknas i databasen.');
     }
 
-    const userRole = roles[0].id;
+    const userRole = userR ?? roles[0].id;
+    
     const passwordHash = await argon2.hash(userPass, {
         type: argon2.argon2id,
     });
