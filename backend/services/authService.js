@@ -26,29 +26,59 @@ async function getUser(userN) {
     return rows.length > 0 ? rows[0] : null;
 }
 
-async function registerUser(userR, userN, displayN, userPass) {
+async function registerUser(userId, userR, userN, displayN, userPass) {
     // Slå upp standardrollen via dess kod i stället för att anta ett visst ID.
     const [roles] = await connectionMySQL.execute(
-        'SELECT id FROM roles WHERE code = ?', ['student']
+        'SELECT * FROM roles'
     );
 
-    if (roles.length === 0) {
+    const roleMap = {};
+    roles.forEach(r => {
+        if (r.code) {
+            roleMap[r.code.toLowerCase()] = r.id;
+        }
+    });
+    
+    if (!roleMap['student']) {
         throw new Error('Standardrollen student saknas i databasen.');
     }
 
-    const userRole = userR ?? roles[0].id;
-    
+    let targetRoleId;
+
+    if (!userId) {
+        targetRoleId = roleMap['student'];
+    } else {
+        const creator = await getSessionUser(userId);
+
+        const isPrivileged = creator && (
+            creator.role === 'teacher' || 
+            creator.role === 'admin' || 
+            creator.id === 2 || 
+            creator.id === 3
+        );
+
+        if (isPrivileged) {
+            if (userR && Object.values(roleMap).includes(Number(userR))) {
+                targetRoleId = Number(userR);
+            } else {
+                targetRoleId = roleMap['student'];
+            }
+        } else {
+            targetRoleId = roleMap['student'];
+        }
+    }
+
     const passwordHash = await argon2.hash(userPass, {
         type: argon2.argon2id,
     });
 
     const sql = 'INSERT INTO users (role_id, username, display_name, password_hash) VALUES (?, ?, ?, ?)';
 
-    const [result] = await connectionMySQL.execute(sql, [userRole, userN, displayN, passwordHash]);
+    const [result] = await connectionMySQL.execute(sql, [targetRoleId, userN, displayN, passwordHash]);
 
     return {
         id: result.insertId,
-        role_id: userRole,
+        role_id: targetRoleId,
         username: userN,
         display_name: displayN
     };

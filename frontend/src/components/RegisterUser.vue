@@ -19,7 +19,7 @@ async function handleRegister() {
   try {
     await api('/api/register', {
       method: 'POST',
-      body: { ...formData },
+      body: { userId: null, ...formData },
     })
 
     successMessage.value = 'Kontot är skapat! Du kan gå tillbaka och spela quizet.'
