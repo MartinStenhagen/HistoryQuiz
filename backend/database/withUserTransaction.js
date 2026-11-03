@@ -8,11 +8,11 @@ module.exports = async function withUserTransaction(userId, work) {
     await connection.beginTransaction();
 
     const [users] = await connection.execute(
-      'SELECT is_active FROM users WHERE id = ? FOR UPDATE',
+      'SELECT id FROM users WHERE id = ? FOR UPDATE',
       [userId]
     );
 
-    if (!users[0] || Number(users[0].is_active) !== 1) {
+    if (!users[0]) {
       throw Object.assign(
         new Error('Kontot är inte tillgängligt.'),
         { status: 401 }

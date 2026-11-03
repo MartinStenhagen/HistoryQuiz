@@ -17,13 +17,9 @@ CREATE TABLE IF NOT EXISTS users (
     display_name VARCHAR(100) NOT NULL,
     password_hash VARCHAR(255)
         CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
 
     UNIQUE KEY uq_users_username (username),
-
-    CONSTRAINT ck_users_active
-        CHECK (is_active IN (0, 1)),
 
     CONSTRAINT fk_users_role
         FOREIGN KEY (role_id)
@@ -106,15 +102,11 @@ CREATE TABLE IF NOT EXISTS achievements (
         'caesar_challenge_completed'
     ) NOT NULL,
     target_value INT UNSIGNED NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
     UNIQUE KEY uq_achievements_code (code),
 
     CONSTRAINT ck_achievements_target
-        CHECK (target_value > 0),
-
-    CONSTRAINT ck_achievements_active
-        CHECK (is_active IN (0, 1))
+        CHECK (target_value > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS user_achievements (
@@ -162,7 +154,6 @@ CREATE TABLE IF NOT EXISTS challenges (
     required_unique_correct SMALLINT UNSIGNED NOT NULL DEFAULT 5,
     question_count TINYINT UNSIGNED NOT NULL DEFAULT 5,
     correct_to_pass TINYINT UNSIGNED NOT NULL DEFAULT 4,
-    is_active BOOLEAN NOT NULL DEFAULT FALSE,
 
     UNIQUE KEY uq_challenges_code (code),
 
@@ -177,9 +168,6 @@ CREATE TABLE IF NOT EXISTS challenges (
 
     CONSTRAINT ck_challenges_pass
         CHECK (correct_to_pass BETWEEN 1 AND question_count),
-
-    CONSTRAINT ck_challenges_active
-        CHECK (is_active IN (0, 1)),
 
     CONSTRAINT fk_challenges_topic
         FOREIGN KEY (topic_id)

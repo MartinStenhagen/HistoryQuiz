@@ -152,7 +152,7 @@ watch(() => auth.version, () => {
 const canShowChallengeOffer = computed(() =>
   auth.isAuthenticated &&
   (screen.value === 'home' || (screen.value === 'result' && !isChallenge.value)) &&
-  challengeStatus.value?.challenge.isActive &&
+  challengeStatus.value?.challenge &&
   challengeStatus.value.challenge.topicId === selectedTopicId.value &&
   (challengeStatus.value.available ||
     selectedDifficulty.value === challengeStatus.value.challenge.requiredDifficulty)

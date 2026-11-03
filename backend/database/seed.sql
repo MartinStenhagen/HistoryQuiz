@@ -15,14 +15,13 @@ INSERT INTO roles (id, code) VALUES
 -- Achievements
 
 INSERT INTO achievements
-    (code, name, description, metric, target_value, is_active)
+    (code, name, description, metric, target_value)
 VALUES
     (
         'FIRST_ANSWER',
         'Första steget',
         'Svara på din första fråga.',
         'total_answers',
-        1,
         1
     ),
     (
@@ -30,31 +29,27 @@ VALUES
         'Historiekännaren',
         'Svara rätt tio gånger totalt.',
         'total_correct',
-        10,
-        1
+        10
     ),
     (
         'TEN_UNIQUE_CORRECT',
         'Historieutforskaren',
         'Svara rätt på tio olika frågor.',
         'unique_answers_correct',
-        10,
-        1
+        10
     ),
     (
         'THREE_IN_A_ROW',
         'Tre i rad',
         'Svara rätt tre gånger i följd.',
         'correct_streak',
-        3,
-        1
+        3
     ),
     (
         'HISTORICAL_CHALLENGER',
         'Caesars utmanare',
         'Klara Caesars utmaning.',
         'caesar_challenge_completed',
-        1,
         1
     );
 
@@ -105,8 +100,7 @@ INSERT INTO challenges (
     required_difficulty,
     required_unique_correct,
     question_count,
-    correct_to_pass,
-    is_active
+    correct_to_pass
 )
 VALUES (
     'CAESAR_CHALLENGE',
@@ -117,8 +111,7 @@ VALUES (
     3,
     5,
     5,
-    4,
-    1
+    4
 );
 SET @caesar_challenge_id = LAST_INSERT_ID();
 
@@ -859,4 +852,3 @@ VALUES
 
 
 -- Konton, svar, spelomgångar och tilldelade achievements skapas av appen
- 

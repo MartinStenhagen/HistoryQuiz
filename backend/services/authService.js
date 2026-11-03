@@ -4,7 +4,7 @@ const connectionMySQL = require('../database/connection');
 async function login(username, password) {
   const user = await getUser(username);
 
-  if (!user || Number(user.is_active) !== 1) {
+  if (!user) {
     return null;
   }
 
@@ -64,7 +64,6 @@ async function getSessionUser(userId) {
     FROM users AS u
     JOIN roles AS r ON r.id = u.role_id
     WHERE u.id = ?
-      AND u.is_active = 1
     `,
     [userId]
   );
