@@ -95,7 +95,10 @@ const emit = defineEmits(['start', 'topic-change', 'difficulty-change', 'registe
           </button>
         </div>
         <p class="difficulty-hint">
-          Klara alla frågor rätt på en nivå för att låsa upp nästa i samma kategori. Framsteg sparas på den här enheten.
+          Klara alla frågor rätt på en nivå för att låsa upp nästa i samma kategori.
+          {{ isAuthenticated
+            ? 'Nivåframsteg sparas för ditt konto i den här webbläsaren.'
+            : 'Gästframsteg sparas separat i den här webbläsaren.' }}
         </p>
       </fieldset>
 

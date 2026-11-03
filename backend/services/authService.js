@@ -60,6 +60,7 @@ async function getSessionUser(userId) {
       u.id,
       u.username,
       u.display_name AS displayName,
+      u.created_at AS createdAt,
       r.code AS role
     FROM users AS u
     JOIN roles AS r ON r.id = u.role_id
