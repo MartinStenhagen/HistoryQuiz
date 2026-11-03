@@ -76,9 +76,11 @@ const emit = defineEmits(['start', 'topic-change', 'difficulty-change', 'registe
             v-for="difficulty in [1, 2, 3]"
             :key="difficulty"
             class="difficulty-option"
-            :class="{
+               :class="{
               'is-selected': selectedDifficulty === difficulty,
               'is-locked': !unlockedDifficulties.includes(difficulty),
+              'is-level-2': difficulty === 2 && unlockedDifficulties.includes(2),
+              'is-level-3': difficulty === 3 && unlockedDifficulties.includes(3),
             }"
             type="button"
             :disabled="disabled || selectedTopicId === null || !unlockedDifficulties.includes(difficulty)"
@@ -219,6 +221,19 @@ const emit = defineEmits(['start', 'topic-change', 'difficulty-change', 'registe
 .difficulty-option:not(:disabled):hover { transform: translateY(-2px); border-color: #d6a25f; }
 .difficulty-option.is-selected { border-color: #e1764e; background: #fff4e9; box-shadow: 0 3px 0 #f1d5bb; }
 .difficulty-option.is-locked { color: #8d91a0; background: #f2f1ee; }
+/* Upplåst nivå 2 – grön design */
+.difficulty-option.is-level-2 {
+  border-color: #4b9b83;
+  background: #e8f6ef;
+  color: #286b56;
+}
+
+/* Upplåst nivå 3 – gulddesign */
+.difficulty-option.is-level-3 {
+  border-color: #d6a13c;
+  background: #fff3d5;
+  color: #8a5a12;
+}
 .difficulty-option:disabled { cursor: not-allowed; }
 .difficulty-option:focus-visible { outline: 3px solid #e5a33c; outline-offset: 2px; }
 .difficulty-icon { font-size: 21px; line-height: 1.1; }
