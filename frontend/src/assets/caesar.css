@@ -1,0 +1,100 @@
+.challenge-character {
+  width: min(100%, 880px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 auto 16px;
+  padding: 0 16px;
+  color: #34415a;
+}
+
+.caesar-portrait {
+  flex: 0 0 auto;
+  width: clamp(128px, 22vw, 164px);
+  aspect-ratio: 1;
+}
+
+.caesar-motion {
+  --reaction-duration: 1.2s;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 89%;
+}
+
+.caesar-motion[data-state='incorrect'] { --reaction-duration: 1.5s; }
+
+.caesar-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+}
+
+.caesar-frame.is-final { opacity: 1; }
+.caesar-motion.is-ready[data-state='idle'] { animation: caesar-breathe 2.4s ease-in-out 2; }
+.caesar-motion.is-ready[data-state='correct'] { animation: caesar-cheer var(--reaction-duration) ease-in-out; }
+.caesar-motion.is-ready[data-state='incorrect'] { animation: caesar-think var(--reaction-duration) ease-in-out; }
+.caesar-motion.is-ready .is-start { animation: caesar-start var(--reaction-duration) linear both; }
+.caesar-motion.is-ready .is-middle { animation: caesar-middle var(--reaction-duration) linear both; }
+.caesar-motion.is-ready[data-state='correct'] .is-final,
+.caesar-motion.is-ready[data-state='incorrect'] .is-final {
+  animation: caesar-finish var(--reaction-duration) linear both;
+}
+
+.caesar-copy { max-width: 290px; }
+.caesar-copy strong { font-size: 18px; }
+.caesar-copy p { margin: 8px 0 0; color: #687188; line-height: 1.5; }
+
+/* Korta övertoningar ger handen ett mellanläge utan att byta hela bilden abrupt. */
+@keyframes caesar-start {
+  0%, 16% { opacity: 1; }
+  28%, 100% { opacity: 0; }
+}
+
+@keyframes caesar-middle {
+  0%, 16% { opacity: 0; }
+  28%, 55% { opacity: 1; }
+  67%, 100% { opacity: 0; }
+}
+
+@keyframes caesar-finish {
+  0%, 55% { opacity: 0; }
+  67%, 100% { opacity: 1; }
+}
+
+@keyframes caesar-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.015); }
+}
+
+@keyframes caesar-cheer {
+  0%, 100% { transform: translateY(0) scale(1); }
+  16% { transform: translateY(1px) scaleY(0.99); }
+  65% { transform: translateY(-4px) scale(1.01); }
+  85% { transform: translateY(1px) scale(1); }
+}
+
+@keyframes caesar-think {
+  0%, 100% { transform: rotate(0); }
+  45% { transform: rotate(-1deg); }
+  75% { transform: rotate(0.5deg); }
+}
+
+@media (max-width: 480px) {
+  .challenge-character { gap: 4px; padding: 4px 0; }
+  .caesar-copy strong { font-size: 16px; }
+  .caesar-copy p { font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caesar-motion.is-ready[data-state],
+  .caesar-motion.is-ready[data-state] .caesar-frame {
+    animation: none;
+    transform: none;
+  }
+}

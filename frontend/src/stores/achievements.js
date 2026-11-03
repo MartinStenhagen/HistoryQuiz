@@ -15,6 +15,7 @@ export const useAchievementsStore = defineStore('achievements', () => {
     TEN_CORRECT: '🧠',
     TEN_UNIQUE_CORRECT: '🧭',
     THREE_IN_A_ROW: '🔥',
+    HISTORICAL_CHALLENGER: '🏛️',
   }
 
   let requestVersion = 0

@@ -14,7 +14,7 @@ async function saveAnswer({
   return withUserTransaction(userId, async (connection) => {
     const [existingRows] = await connection.execute(
       `
-      SELECT question_id, selected_option_id, response_json
+      SELECT challenge_run_id, question_id, selected_option_id, response_json
       FROM answer_attempts
       WHERE user_id = ? AND request_key = ?
       `,
@@ -25,6 +25,7 @@ async function saveAnswer({
 
     if (existing) {
       if (
+        existing.challenge_run_id !== null ||
         existing.question_id !== questionId ||
         existing.selected_option_id !== selectedOptionId
       ) {
