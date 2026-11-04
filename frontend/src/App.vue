@@ -115,6 +115,7 @@ async function submitAnswer(questionId, selectedOptionId) {
 
 const achievementsStore = useAchievementsStore()
 const difficultyProgressStore = useDifficultyProgressStore()
+const quizAccountKey = ref(null)
 const screen = ref('home')
 const questions = ref([])
 const questionIndex = ref(0)
@@ -150,6 +151,7 @@ let challengeStatusRequest = 0
 
 watch(() => auth.version, () => {
   achievementNotices.value = []
+  levelUnlockNotice.value = null
   challengeStatus.value = null
   challengeStatusError.value = ''
   challengeStatusLoading.value = false
@@ -164,7 +166,7 @@ watch(() => router.currentRoute.value.name, name => {
 const canShowChallengeOffer = computed(() =>
   auth.isAuthenticated &&
   (screen.value === 'home' || (screen.value === 'result' && !isChallenge.value)) &&
-  challengeStatus.value?.challenge.isActive &&
+  challengeStatus.value?.challenge &&
   challengeStatus.value.challenge.topicId === selectedTopicId.value &&
   (challengeStatus.value.available ||
     selectedDifficulty.value === challengeStatus.value.challenge.requiredDifficulty)
@@ -204,6 +206,12 @@ async function loadChallengeStatus() {
 const unlockedDifficulties = computed(() =>
   difficultyProgressStore.unlockedLevels(selectedTopicId.value)
 )
+
+watch([unlockedDifficulties, screen], ([levels, currentScreen]) => {
+  if (currentScreen === 'home' && !levels.includes(selectedDifficulty.value)) {
+    selectedDifficulty.value = 1
+  }
+}, { flush: 'sync' })
 
 function dismissAchievementNotice(noticeId) {
   achievementNotices.value = achievementNotices.value.filter(
@@ -401,6 +409,7 @@ function goHome() {
   if (loading.value || auth.busy) return
 
   screen.value = 'home'
+  quizAccountKey.value = null
   questions.value = []
   questionIndex.value = 0
   selectedAnswer.value = null
@@ -437,6 +446,7 @@ async function startQuiz() {
   loading.value = true
   loadingMessage.value = 'Hämtar frågor…'
   const accountVersion = auth.version
+  const accountKey = difficultyProgressStore.accountKey
 
   try {
     const params = new URLSearchParams({
@@ -463,6 +473,7 @@ async function startQuiz() {
     if (auth.version !== accountVersion) {
       throw new Error('Inloggningen ändrades under anropet.')
     }
+    quizAccountKey.value = accountKey
     screen.value = 'quiz'
   } catch (error) {
     console.error(error)
@@ -543,7 +554,12 @@ async function chooseAnswer(optionId) {
 
     const isLastQuestion = questionIndex.value === questions.value.length - 1
 
-    if (gameMode.value === 'regular' && isLastQuestion && score.value === questions.value.length) {
+    if (
+      gameMode.value === 'regular' &&
+      isLastQuestion &&
+      score.value === questions.value.length &&
+      quizAccountKey.value === difficultyProgressStore.accountKey
+    ) {
       const unlockedDifficulty = difficultyProgressStore.unlockNextLevel(
         selectedTopicId.value,
         selectedDifficulty.value

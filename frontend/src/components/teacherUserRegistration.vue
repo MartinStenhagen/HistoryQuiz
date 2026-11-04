@@ -1,6 +1,7 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { api } from '../api'
+import { useAuthStore } from '@/stores/auth'
 
 const emit = defineEmits(['registration-success'])
 
@@ -8,6 +9,8 @@ const formData = reactive({role: '', username: '', displayName: '', password: ''
 const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+const authStore = useAuthStore()
+const currentUserId = computed(() => authStore.user?.id)
 
 async function handleRegister() {
   if (loading.value) return
@@ -19,7 +22,7 @@ async function handleRegister() {
   try {
     await api('/api/register', {
       method: 'POST',
-      body: { ...formData },
+      body: { userId: currentUserId.value, ...formData },
     })
 
     successMessage.value = 'Kontot är skapat!'

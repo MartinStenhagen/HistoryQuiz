@@ -72,7 +72,6 @@ async function readProgress(connection, userId) {
     LEFT JOIN user_achievements AS ua
       ON ua.achievement_id = a.id
       AND ua.user_id = ?
-    WHERE a.is_active = 1
     ORDER BY a.id
     `,
     [userId]

@@ -13,7 +13,6 @@ async function getTopics() {
             JOIN answer_options AS o
                 ON o.question_id = q.id
             WHERE q.topic_id = t.id
-                AND q.status = ?
                 AND q.question_kind = 'regular'
                 AND q.quiz_id IS NULL
             GROUP BY q.id
@@ -23,7 +22,7 @@ async function getTopics() {
         ORDER BY t.name
     `;
 
-    const [rows] = await database.execute(sql, ['published']);
+    const [rows] = await database.execute(sql);
 
     return rows;
 }

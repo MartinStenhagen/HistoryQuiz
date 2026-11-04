@@ -27,8 +27,7 @@ async function getQuestions(limit, topicId = null, difficulty = null) {
             FROM questions
             JOIN answer_options
                 ON answer_options.question_id = questions.id
-            WHERE questions.status = ?
-                AND (? IS NULL OR questions.topic_id = ?)
+            WHERE (? IS NULL OR questions.topic_id = ?)
                 AND (? IS NULL OR questions.difficulty = ?)
                 AND questions.question_kind = 'regular'
                 AND questions.quiz_id IS NULL
@@ -44,7 +43,6 @@ async function getQuestions(limit, topicId = null, difficulty = null) {
     `;
 
     const [rows] = await database.execute(sql, [
-        'published',
         topicId,
         topicId,
         difficulty,
@@ -91,7 +89,6 @@ async function answerQuestion(
         JOIN answer_options AS o
             ON o.question_id = q.id
         WHERE q.id = ?
-            AND q.status = ?
             AND q.question_kind = ?
             AND (
                 (? IS NULL AND q.quiz_id IS NULL)
@@ -111,7 +108,6 @@ async function answerQuestion(
 
     const [rows] = await executor.execute(sql, [
         questionId,
-        'published',
         kind,
         quizId,
         quizId,
