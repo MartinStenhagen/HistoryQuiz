@@ -6,6 +6,7 @@ defineProps({
     type: Array,
     required: true,
   },
+  publishedQuizzes: { type: Array, default: () => [] },
   selectedTopicId: {
     type: Number,
     default: null,
@@ -34,7 +35,7 @@ const handleLoginSuccess = (userData) => {
 
 const showLoginPopup = ref(false)
 
-const emit = defineEmits(['start', 'topic-change', 'difficulty-change', 'register', 'logout', 'login-success'])
+const emit = defineEmits(['start', 'play-quiz', 'topic-change', 'difficulty-change', 'register', 'logout', 'login-success'])
 </script>
 
 <template>
@@ -107,6 +108,24 @@ const emit = defineEmits(['start', 'topic-change', 'difficulty-change', 'registe
       >
         Börja spela <span aria-hidden="true">→</span>
       </button>
+      <section v-if="publishedQuizzes.length" class="published-quizzes" aria-labelledby="published-quizzes-title">
+        <h2 id="published-quizzes-title">Quiz skapade av lärare</h2>
+        <article v-for="quiz in publishedQuizzes" :key="quiz.id" class="published-quiz">
+          <div>
+            <h3>{{ quiz.title }}</h3>
+            <p>{{ quiz.topicName }} · Nivå {{ quiz.difficulty }} · {{ quiz.questionCount }} frågor</p>
+            <p v-if="quiz.description">{{ quiz.description }}</p>
+          </div>
+          <button
+            class="button button-secondary"
+            type="button"
+            :disabled="disabled"
+            @click="emit('play-quiz', quiz.id)"
+          >
+            Spela quiz
+          </button>
+        </article>
+      </section>
       <section class="login_container">
         <template v-if="!isAuthenticated">
           <section class="auth-links">
@@ -237,8 +256,43 @@ const emit = defineEmits(['start', 'topic-change', 'difficulty-change', 'registe
   margin-top: 20px;
 }
 
+.published-quizzes {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.published-quizzes h2 {
+  color: #34415a;
+  font-size: 19px;
+}
+
+.published-quiz {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e8e3d9;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+}
+
+.published-quiz h3 {
+  margin: 0;
+  color: #34415a;
+  font-size: 16px;
+}
+
+.published-quiz p {
+  margin: 4px 0 0;
+  color: #687188;
+  font-size: 13px;
+}
+
 @media (max-width: 700px) {
   .difficulty-options { gap: 6px; }
   .difficulty-option { min-height: 82px; }
+  .published-quiz { align-items: flex-start; flex-direction: column; }
 }
 </style>

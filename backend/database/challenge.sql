@@ -3,9 +3,13 @@ USE historyQuizDb;
 -- Befintliga frågor blir automatiskt vanliga quizfrågor.
 -- question_code ger nya seed-frågor en stabil identifierare.
 ALTER TABLE questions
-    ADD COLUMN question_code VARCHAR(64) NULL,
+    ADD COLUMN question_code VARCHAR(64) NULL;
+
+ALTER TABLE questions
     ADD COLUMN question_kind ENUM('regular', 'challenge')
-        NOT NULL DEFAULT 'regular',
+        NOT NULL DEFAULT 'regular';
+
+ALTER TABLE questions
     ADD UNIQUE KEY uq_questions_code (question_code);
 
 CREATE TABLE challenges (
@@ -132,22 +136,33 @@ CREATE TABLE challenge_run_questions (
 
 ALTER TABLE answer_attempts
     ADD COLUMN challenge_run_id INT UNSIGNED NULL,
+    ALGORITHM=INSTANT;
 
-    -- Högst ett sparat svar per fråga i samma utmaningsomgång.
+-- Högst ett sparat svar per fråga i samma utmaningsomgång.
+ALTER TABLE answer_attempts
     ADD UNIQUE KEY uq_attempts_challenge_question
-        (challenge_run_id, question_id),
+        (challenge_run_id, question_id);
 
-    -- Svaret måste tillhöra samma användare som spelomgången.
+-- De nya kolumnerna är NULL för äldre svar, så inga befintliga rader saknar ägare.
+-- InnoDB kan lägga till dessa begränsningar utan att kopiera svarstabellen.
+SET FOREIGN_KEY_CHECKS = 0;
+
+ALTER TABLE answer_attempts
     ADD CONSTRAINT fk_attempts_challenge_owner
         FOREIGN KEY (challenge_run_id, user_id)
         REFERENCES challenge_runs (id, user_id)
         ON DELETE RESTRICT,
+    ALGORITHM=INPLACE;
 
-    -- Frågan måste vara en av omgångens valda frågor.
+-- Frågan måste vara en av omgångens valda frågor.
+ALTER TABLE answer_attempts
     ADD CONSTRAINT fk_attempts_challenge_question
         FOREIGN KEY (challenge_run_id, question_id)
         REFERENCES challenge_run_questions (challenge_run_id, question_id)
-        ON DELETE RESTRICT;
+        ON DELETE RESTRICT,
+    ALGORITHM=INPLACE;
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 USE historyQuizDb;
 
