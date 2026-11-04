@@ -1,14 +1,15 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useAuthStore } from './auth'
 
 const STORAGE_KEY = 'historyQuiz.difficultyProgress'
 const MAX_DIFFICULTY = 3
 
-function readProgress() {
+function readProgress(accountKey) {
   if (typeof localStorage === 'undefined') return {}
 
   try {
-    const savedProgress = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    const savedProgress = JSON.parse(localStorage.getItem(`${STORAGE_KEY}:${accountKey}`) || '{}')
     return savedProgress && typeof savedProgress === 'object' ? savedProgress : {}
   } catch {
     return {}
@@ -16,7 +17,18 @@ function readProgress() {
 }
 
 export const useDifficultyProgressStore = defineStore('difficultyProgress', () => {
-  const unlockedByTopic = ref(readProgress())
+  const auth = useAuthStore()
+  // Skapandedatum skiljer nya konton från gamla när databasen återskapats.
+  const accountKey = computed(() => auth.user
+    ? `user:${auth.user.id}:${auth.user.createdAt}`
+    : 'guest'
+  )
+  const unlockedByTopic = ref({})
+
+  // Den tidigare gemensamma lagringen kan inte kopplas till ett visst konto.
+  watch(accountKey, (key) => {
+    unlockedByTopic.value = readProgress(key)
+  }, { immediate: true, flush: 'sync' })
 
   function unlockedLevels(topicId) {
     if (topicId === null || topicId === undefined) return [1]
@@ -59,11 +71,11 @@ export const useDifficultyProgressStore = defineStore('difficultyProgress', () =
     if (typeof localStorage === 'undefined') return
 
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(unlockedByTopic.value))
+      localStorage.setItem(`${STORAGE_KEY}:${accountKey.value}`, JSON.stringify(unlockedByTopic.value))
     } catch {
       // Progress still works for the current session if storage is unavailable.
     }
   }
 
-  return { unlockedLevels, isUnlocked, unlockNextLevel }
+  return { accountKey, unlockedLevels, isUnlocked, unlockNextLevel }
 })

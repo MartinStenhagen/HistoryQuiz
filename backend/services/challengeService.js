@@ -113,7 +113,6 @@ async function getCaesarStatus(userId) {
     const challenge = await readDefinition(connection);
     const correct = await countQualification(connection, userId, challenge);
     const required = Number(challenge.required_unique_correct);
-    const active = Number(challenge.is_active) === 1;
 
     return {
       userId,
@@ -126,7 +125,6 @@ async function getCaesarStatus(userId) {
         requiredCorrectAnswers: required,
         questionCount: Number(challenge.question_count),
         requiredCorrectToWin: Number(challenge.correct_to_pass),
-        isActive: active,
       },
       qualification: {
         correctQuestions: correct,
@@ -134,7 +132,7 @@ async function getCaesarStatus(userId) {
         remaining: Math.max(0, required - correct),
         eligible: correct >= required,
       },
-      available: active && correct >= required,
+      available: correct >= required,
     };
   });
 }
@@ -161,10 +159,6 @@ async function startRun({ userId, requestKey }) {
 
     const challenge = await readDefinition(connection);
 
-    if (Number(challenge.is_active) !== 1) {
-      throw fail(409, 'Utmaningen är inte aktiverad.');
-    }
-
     const correct = await countQualification(connection, userId, challenge);
 
     if (correct < Number(challenge.required_unique_correct)) {
@@ -185,7 +179,7 @@ async function startRun({ userId, requestKey }) {
       JOIN questions AS q ON q.id = cq.question_id
       JOIN answer_options AS o ON o.question_id = q.id
       WHERE cq.challenge_id = ? AND q.topic_id = ?
-        AND q.question_kind = 'challenge' AND q.status = 'published'
+        AND q.question_kind = 'challenge'
       GROUP BY cq.question_id, cq.sort_order
       HAVING COUNT(*) = 4 AND SUM(o.is_correct) = 1
       ORDER BY cq.sort_order
