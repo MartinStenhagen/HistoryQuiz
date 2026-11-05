@@ -27,6 +27,7 @@ async function countQualification(connection, userId, challenge) {
       AND a.challenge_run_id IS NULL
       AND q.topic_id = ? AND q.difficulty = ?
       AND q.question_kind = 'regular'
+      AND q.quiz_id IS NULL
     `,
     [userId, challenge.topic_id, challenge.required_difficulty]
   );

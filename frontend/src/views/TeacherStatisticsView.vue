@@ -1,13 +1,15 @@
 <script setup>
-import { computed,ref, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import teacherUserRegistration from '@/components/teacherUserRegistration.vue'
 import studentStatsOverview from '@/components/studentStatsOverview.vue';
+import TeacherQuizzes from '@/components/TeacherQuizzes.vue'
 
 const currentTab = ref('students')
 
 const tabs = {
   students: studentStatsOverview,
-  registration: teacherUserRegistration
+  registration: teacherUserRegistration,
+  quizzes: TeacherQuizzes,
 }
 
 const activeComponent = computed(() => {
@@ -30,6 +32,7 @@ function selectTab(tabKey) {
     <nav class="teacherLinks">
         <h3 class="formButton" :class="{ active: currentTab === 'students'}" @click="selectTab('students')">Visa elever</h3>
         <h3 class="formButton" :class="{ active: currentTab === 'registration'}" @click="selectTab('registration')">Lägg till konto</h3>
+        <h3 class="formButton" :class="{ active: currentTab === 'quizzes'}" @click="selectTab('quizzes')">Mina quiz</h3>
     </nav>
     <main>
       <KeepAlive>

@@ -29,6 +29,7 @@ onMounted(() => {
 const pendingAnswer = ref(null)
 const pendingChallengeStart = ref(null)
 const gameMode = ref('regular')
+const customQuizId = ref(null)
 const challengeRun = ref(null)
 const isChallenge = computed(() => gameMode.value === 'challenge')
 const requiredAccountId = computed(() =>
@@ -54,6 +55,7 @@ async function submitAnswer(questionId, selectedOptionId) {
       requestKey: crypto.randomUUID(),
       accountId: isChallenge.value ? challengeRun.value.accountId : auth.user?.id ?? null,
       runId: isChallenge.value ? challengeRun.value.runId : null,
+      quizId: gameMode.value === 'teacher-quiz' ? customQuizId.value : null,
     }
   }
 
@@ -62,7 +64,8 @@ async function submitAnswer(questionId, selectedOptionId) {
   if (
     attempt.questionId !== questionId ||
     attempt.selectedOptionId !== selectedOptionId ||
-    attempt.runId !== (isChallenge.value ? challengeRun.value.runId : null)
+    attempt.runId !== (isChallenge.value ? challengeRun.value.runId : null) ||
+    attempt.quizId !== (gameMode.value === 'teacher-quiz' ? customQuizId.value : null)
   ) {
     throw new Error('Det tidigare försöket behöver skickas om med samma svar.')
   }
@@ -72,9 +75,11 @@ async function submitAnswer(questionId, selectedOptionId) {
   }
 
   const startedAtVersion = auth.version
-  const endpoint = attempt.runId === null
-    ? `/api/questions/${attempt.questionId}/${attempt.accountId === null ? 'check' : 'answer'}`
-    : `/api/challenges/runs/${attempt.runId}/answers`
+  const endpoint = attempt.runId !== null
+    ? `/api/challenges/runs/${attempt.runId}/answers`
+    : attempt.quizId !== null
+      ? `/api/quizzes/${attempt.quizId}/questions/${attempt.questionId}/${attempt.accountId === null ? 'check' : 'answer'}`
+      : `/api/questions/${attempt.questionId}/${attempt.accountId === null ? 'check' : 'answer'}`
 
   try {
     // En ny inloggning nollställer utmärkelsernas baslinje, även mitt i en omgång.
@@ -132,6 +137,9 @@ const topics = ref([])
 const selectedTopicId = ref(null)
 const topicsLoading = ref(false)
 const topicsError = ref('')
+const publishedQuizzes = ref([])
+const publishedQuizzesLoading = ref(false)
+const publishedQuizzesError = ref('')
 const achievementNotices = ref([])
 const selectedDifficulty = ref(1)
 const levelUnlockNotice = ref(null)
@@ -150,6 +158,10 @@ watch(() => auth.version, () => {
   challengeStatusRequest += 1
   if (auth.isAuthenticated) void loadChallengeStatus()
 }, { flush: 'sync' })
+
+watch(() => router.currentRoute.value.name, name => {
+  if (name === 'home') void loadPublishedQuizzes()
+})
 
 const canShowChallengeOffer = computed(() =>
   auth.isAuthenticated &&
@@ -329,6 +341,7 @@ function resumePendingAction() {
 
 function restartQuiz() {
   if (isChallenge.value) void startChallenge()
+  else if (gameMode.value === 'teacher-quiz') void startTeacherQuiz(customQuizId.value)
   else void startQuiz()
 }
 
@@ -365,6 +378,24 @@ async function loadTopics() {
 }
 
 onMounted(loadTopics)
+onMounted(loadPublishedQuizzes)
+
+async function loadPublishedQuizzes() {
+  if (publishedQuizzesLoading.value) return
+
+  publishedQuizzesLoading.value = true
+  publishedQuizzesError.value = ''
+
+  try {
+    const data = await api('/api/quizzes')
+    publishedQuizzes.value = data.quizzes
+  } catch (error) {
+    console.error(error)
+    publishedQuizzesError.value = 'Kunde inte hämta lärarnas quiz.'
+  } finally {
+    publishedQuizzesLoading.value = false
+  }
+}
 
 function showRegistration() {
   if (loading.value || auth.busy || !authReady.value) return
@@ -385,6 +416,7 @@ function goHome() {
   pendingAnswer.value = null
   pendingChallengeStart.value = null
   gameMode.value = 'regular'
+  customQuizId.value = null
   challengeRun.value = null
   score.value = 0
   isCorrect.value = false
@@ -451,6 +483,42 @@ async function startQuiz() {
   }
 }
 
+async function startTeacherQuiz(quizId) {
+  if (loading.value || auth.busy || !authReady.value) return
+
+  goHome()
+  loading.value = true
+  loadingMessage.value = 'Hämtar quiz…'
+  const accountVersion = auth.version
+
+  try {
+    const data = await api(`/api/quizzes/${quizId}/questions`)
+    if (data.questions.length === 0) {
+      errorMessage.value = 'Quizet innehåller inga spelbara frågor.'
+      return
+    }
+
+    questions.value = data.questions.map(question => ({
+      id: question.id,
+      question: question.questionText,
+      answers: question.options,
+    }))
+
+    if (auth.isAuthenticated) await achievementsStore.load()
+    if (auth.version !== accountVersion) {
+      throw new Error('Inloggningen ändrades under anropet.')
+    }
+    customQuizId.value = quizId
+    gameMode.value = 'teacher-quiz'
+    screen.value = 'quiz'
+  } catch (error) {
+    console.error(error)
+    errorMessage.value = error.message || 'Kunde inte hämta quizet. Försök igen.'
+  } finally {
+    loading.value = false
+  }
+}
+
 async function chooseAnswer(optionId) {
   if (
     loading.value || auth.busy || !authReady.value || needsLogin.value ||
@@ -487,7 +555,9 @@ async function chooseAnswer(optionId) {
     const isLastQuestion = questionIndex.value === questions.value.length - 1
 
     if (
-      !isChallenge.value && isLastQuestion && score.value === questions.value.length &&
+      gameMode.value === 'regular' &&
+      isLastQuestion &&
+      score.value === questions.value.length &&
       quizAccountKey.value === difficultyProgressStore.accountKey
     ) {
       const unlockedDifficulty = difficultyProgressStore.unlockNextLevel(
@@ -510,7 +580,7 @@ async function chooseAnswer(optionId) {
     if (result.saved) {
       loadingMessage.value = 'Uppdaterar framsteg…'
       await refreshAchievementNotices(accountVersion)
-      if (!isChallenge.value && selectedDifficulty.value === 3 && isLastQuestion) {
+      if (gameMode.value === 'regular' && selectedDifficulty.value === 3 && isLastQuestion) {
         await loadChallengeStatus()
       }
     }
@@ -591,6 +661,8 @@ function nextStep() {
         :achievement="notice.achievement"
         @dismiss="dismissAchievementNotice(notice.id)"
       />
+      <p v-if="publishedQuizzesError" role="alert">{{ publishedQuizzesError }}</p>
+      <p v-else-if="publishedQuizzesLoading" role="status">Hämtar lärarquiz…</p>
     </aside>
     <aside
       v-if="levelUnlockNotice && $route.name === 'home' && screen === 'feedback'"
@@ -663,6 +735,7 @@ function nextStep() {
           <StartScreen
             v-if="screen === 'home'"
             :topics="topics"
+            :published-quizzes="publishedQuizzes"
             :selected-topic-id="selectedTopicId"
             :selected-difficulty="selectedDifficulty"
             :unlocked-difficulties="unlockedDifficulties"
@@ -671,6 +744,7 @@ function nextStep() {
             @topic-change="changeTopic"
             @difficulty-change="selectedDifficulty = $event"
             @start="startQuiz"
+            @play-quiz="startTeacherQuiz"
             @login-success="goHome"
             :account-busy="auth.busy"
             :disabled="loading || topicsLoading || !authReady || auth.busy"

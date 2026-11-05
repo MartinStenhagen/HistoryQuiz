@@ -10,6 +10,8 @@ async function saveAnswer({
   questionId,
   selectedOptionId,
   requestKey,
+  questionKind = 'regular',
+  quizId = null,
 }) {
   return withUserTransaction(userId, async (connection) => {
     const [existingRows] = await connection.execute(
@@ -47,7 +49,9 @@ async function saveAnswer({
     const grading = await questionService.answerQuestion(
       questionId,
       selectedOptionId,
-      connection
+      connection,
+      questionKind,
+      quizId
     );
 
     if (!grading) {

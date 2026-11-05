@@ -14,6 +14,7 @@ async function getTopics() {
                 ON o.question_id = q.id
             WHERE q.topic_id = t.id
                 AND q.question_kind = 'regular'
+                AND q.quiz_id IS NULL
             GROUP BY q.id
             HAVING COUNT(*) = 4
                 AND SUM(o.is_correct) = 1
