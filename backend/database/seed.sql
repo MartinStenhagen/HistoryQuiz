@@ -851,4 +851,4 @@ VALUES
     (@question_id, '1918', 4, 0);
 
 
--- Konton, svar, spelomgångar och tilldelade achievements skapas av appen
+-- Konton, lärarquiz, svar, spelomgångar och tilldelade achievements skapas av appen.
