@@ -91,14 +91,14 @@ function validateQuiz(input) {
 }
 
 async function insertQuestions(connection, quizId, topicId, difficulty, questions) {
-    for (const [questionIndex, question] of questions.entries()) {
+    for (const question of questions) {
         const [result] = await connection.execute(
             `
             INSERT INTO questions (
                 topic_id, question_text, explanation, difficulty,
-                status, question_kind, quiz_id
+                question_kind, quiz_id
             )
-            VALUES (?, ?, ?, ?, 'draft', 'regular', ?)
+            VALUES (?, ?, ?, ?, 'regular', ?)
             `,
             [topicId, question.questionText, question.explanation, difficulty, quizId]
         );
@@ -165,7 +165,7 @@ async function getTeacherQuiz(teacherId, quizId) {
                o.is_correct AS isCorrect, o.sort_order AS sortOrder
         FROM questions AS q
         JOIN answer_options AS o ON o.question_id = q.id
-        WHERE q.quiz_id = ? AND q.status = 'draft'
+        WHERE q.quiz_id = ?
         ORDER BY q.id, o.sort_order
         `,
         [quizId]
@@ -257,8 +257,9 @@ async function updateDraft(teacherId, quizId, input) {
             `,
             [quiz.title, quiz.description, quiz.topicId, quiz.difficulty, quizId, teacherId]
         );
+        // Quizet är låst och kontrollerat som utkast ovan.
         await connection.execute(
-            "DELETE FROM questions WHERE quiz_id = ? AND status = 'draft'",
+            'DELETE FROM questions WHERE quiz_id = ?',
             [quizId]
         );
         await insertQuestions(
@@ -302,7 +303,7 @@ async function publishQuiz(teacherId, quizId) {
                        COALESCE(SUM(o.is_correct), 0) AS correct_count
                 FROM questions AS q
                 LEFT JOIN answer_options AS o ON o.question_id = q.id
-                WHERE q.quiz_id = ? AND q.status = 'draft'
+                WHERE q.quiz_id = ?
                 GROUP BY q.id
             ) AS question_checks
             `,
@@ -316,14 +317,6 @@ async function publishQuiz(teacherId, quizId) {
             throw fail(400, 'Quizet behöver minst en fråga med fyra svar och exakt ett rätt svar.');
         }
 
-        await connection.execute(
-            `
-            UPDATE questions
-            SET status = 'published', published_at = CURRENT_TIMESTAMP(6)
-            WHERE quiz_id = ? AND status = 'draft'
-            `,
-            [quizId]
-        );
         await connection.execute(
             `
             UPDATE teacher_quizzes
@@ -359,14 +352,6 @@ async function archiveQuiz(teacherId, quizId) {
 
         await connection.execute(
             `
-            UPDATE questions
-            SET status = 'archived'
-            WHERE quiz_id = ? AND status = 'published'
-            `,
-            [quizId]
-        );
-        await connection.execute(
-            `
             UPDATE teacher_quizzes
             SET status = 'archived'
             WHERE id = ? AND teacher_id = ?
@@ -391,7 +376,6 @@ async function getPublishedQuizzes() {
         FROM teacher_quizzes AS q
         JOIN topics AS t ON t.id = q.topic_id
         JOIN questions ON questions.quiz_id = q.id
-            AND questions.status = 'published'
         WHERE q.status = 'published'
         GROUP BY q.id
         ORDER BY q.published_at DESC, q.id DESC
@@ -407,7 +391,7 @@ async function getQuizQuestions(quizId) {
         SELECT q.id AS questionId, q.question_text AS questionText,
                o.id AS optionId, o.option_text AS optionText
         FROM teacher_quizzes AS quiz
-        JOIN questions AS q ON q.quiz_id = quiz.id AND q.status = 'published'
+        JOIN questions AS q ON q.quiz_id = quiz.id
         JOIN answer_options AS o ON o.question_id = q.id
         WHERE quiz.id = ? AND quiz.status = 'published'
         ORDER BY q.id, o.sort_order
